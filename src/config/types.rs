@@ -50,7 +50,7 @@ impl DnsMode {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ClientConfig {
     pub server: String,
 }
@@ -85,7 +85,7 @@ impl Default for StealthConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct AuthConfig {
     pub methods: Vec<AuthMethod>,
 }
@@ -131,7 +131,7 @@ impl Default for DnsConfig {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct AppConfig {
     pub client: ClientConfig,
     pub transport: TransportConfig,
