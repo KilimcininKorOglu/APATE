@@ -1,5 +1,7 @@
 pub mod auth;
+pub mod config;
 pub mod noise;
+pub mod telemetry;
 pub mod transport;
 pub mod util;
 
@@ -25,4 +27,20 @@ pub enum RuntimeError {
     EventLoopStartFailed,
     #[error("runtime shutdown timed out")]
     ShutdownTimeout,
+}
+
+#[derive(Debug, Error)]
+pub enum ApateError {
+    #[error(transparent)]
+    Config(#[from] ConfigError),
+    #[error(transparent)]
+    Auth(#[from] auth::AuthError),
+    #[error(transparent)]
+    Frame(#[from] transport::FrameError),
+    #[error(transparent)]
+    Transport(#[from] transport::TransportError),
+    #[error(transparent)]
+    Security(#[from] noise::SecurityError),
+    #[error(transparent)]
+    Runtime(#[from] RuntimeError),
 }
