@@ -1,6 +1,8 @@
+pub mod backend;
 pub mod executor;
 pub mod reactor;
 pub mod timer;
+pub mod waker;
 
 use crate::RuntimeError;
 use crate::runtime::executor::Executor;
