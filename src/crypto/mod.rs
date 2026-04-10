@@ -1,6 +1,8 @@
 pub mod aead;
 pub mod kdf;
+pub mod kx;
 pub mod rng;
+pub mod sign;
 
 use thiserror::Error;
 
@@ -14,4 +16,8 @@ pub enum CryptoError {
     DecryptionFailed,
     #[error("rng failure")]
     RngFailure,
+    #[error("key exchange failure")]
+    KxFailure,
+    #[error("signature verification failure")]
+    SignatureFailure,
 }
