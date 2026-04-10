@@ -493,9 +493,9 @@ Deployments can enable one or multiple methods.
 
 ### 11.4 Open Questions
 
-- **[TBD: Default auth backend precedence]** Options: static-first, token-first, policy-order. Leaning: policy-order for operator control.
-- **[TBD: Baseline probe-rate defense defaults]** Options: strict, balanced, permissive. Leaning: balanced for lower false positives.
-- **[TBD: Telemetry verbosity baseline]** Options: minimal, standard, detailed. Leaning: minimal for privacy posture.
+- **Default auth backend precedence:** policy-order
+- **Baseline probe-rate defense defaults:** strict
+- **Telemetry verbosity baseline:** minimal
 
 ## 12. Future Considerations
 

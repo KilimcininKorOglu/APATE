@@ -166,9 +166,9 @@ Base unit `4px`, scale: `4, 8, 12, 16, 20, 24, 32, 40, 48, 64`.
 
 | Asset          | Format      | Size                | Status |
 |----------------|-------------|---------------------|--------|
-| Logo (full)    | SVG + PNG   | vector / 1024px     | TBD |
-| Icon           | SVG + PNG   | 512px, 192px, 64px  | TBD |
-| Favicon        | ICO + PNG   | 32px, 16px          | TBD |
-| OG Image       | PNG         | 1200×630            | TBD |
-| Social Banner  | PNG         | 1500×500            | TBD |
-| Website Hero   | PNG/SVG     | 1600×900            | TBD |
+| Logo (full)    | SVG + PNG   | vector / 1024px     | Required for v1 |
+| Icon           | SVG + PNG   | 512px, 192px, 64px  | Required for v1 |
+| Favicon        | ICO + PNG   | 32px, 16px          | Required for v1 |
+| OG Image       | PNG         | 1200×630            | Required for v1 |
+| Social Banner  | PNG         | 1500×500            | Required for v1 |
+| Website Hero   | PNG/SVG     | 1600×900            | Required for v1 |
