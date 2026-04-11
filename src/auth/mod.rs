@@ -1,8 +1,10 @@
 pub mod backend;
 pub mod static_key;
+pub mod token;
 
 pub use backend::AuthCoordinator;
 pub use static_key::StaticKeyBackend;
+pub use token::{TokenBackend, TokenClaims, TokenPolicy};
 
 use crate::util::AuthMethod;
 use thiserror::Error;
