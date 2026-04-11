@@ -1,3 +1,9 @@
+pub mod backend;
+pub mod static_key;
+
+pub use backend::AuthCoordinator;
+pub use static_key::StaticKeyBackend;
+
 use crate::util::AuthMethod;
 use thiserror::Error;
 
