@@ -1,17 +1,24 @@
+#[path = "migration.rs"]
+mod migration;
+
 use crate::transport::mode::{AttemptOutcome, ModeNegotiator, TransportKind};
 use crate::transport::quic_mask::{QuicMaskConnectPolicy, QuicMaskTransport};
 use crate::transport::tcp_tls::TcpTlsTransport;
 use crate::transport::udp_tls::UdpTlsTransport;
-use crate::transport::{Frame, FrameType, TransportError, TransportStrategy};
+use crate::transport::{Frame, FrameError, FrameType, TransportError, TransportStrategy};
 use crate::util::ConnectionState;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransportEngine {
     state: ConnectionState,
     sequence: u64,
+    key_epoch: u64,
     fallback_count: u32,
     negotiator: ModeNegotiator,
     active_kind: TransportKind,
+    session_id: [u8; 16],
+    migration_secret: [u8; 32],
+    endpoint: String,
     udp: UdpTlsTransport,
     tcp: TcpTlsTransport,
     quic: QuicMaskTransport,
@@ -23,9 +30,13 @@ impl TransportEngine {
         Self {
             state: ConnectionState::Init,
             sequence: 0,
+            key_epoch: 0,
             fallback_count: 0,
             negotiator,
             active_kind,
+            session_id: [7_u8; 16],
+            migration_secret: [13_u8; 32],
+            endpoint: String::from("127.0.0.1:443"),
             udp,
             tcp,
             quic: QuicMaskTransport::new(QuicMaskConnectPolicy::Success),
@@ -42,6 +53,55 @@ impl TransportEngine {
 
     pub fn fallback_count(&self) -> u32 {
         self.fallback_count
+    }
+
+    pub fn key_epoch(&self) -> u64 {
+        self.key_epoch
+    }
+
+    pub fn endpoint(&self) -> &str {
+        &self.endpoint
+    }
+
+    pub fn migration_proof(&self, new_endpoint: &str) -> [u8; 16] {
+        migration::generate_migration_proof(self.session_id, &self.migration_secret, new_endpoint)
+    }
+
+    pub fn rekey(&mut self) -> Result<u64, TransportError> {
+        if self.state != ConnectionState::Established {
+            return Err(TransportError::NotConnected);
+        }
+
+        self.state = ConnectionState::Rekeying;
+        self.key_epoch = self.key_epoch.saturating_add(1);
+        self.state = ConnectionState::Established;
+        Ok(self.key_epoch)
+    }
+
+    pub fn migrate_endpoint(
+        &mut self,
+        new_endpoint: String,
+        proof: [u8; 16],
+    ) -> Result<(), TransportError> {
+        if self.state != ConnectionState::Established {
+            return Err(TransportError::NotConnected);
+        }
+
+        self.state = ConnectionState::Migrating;
+        let is_valid = migration::validate_migration_proof(
+            self.session_id,
+            &self.migration_secret,
+            &new_endpoint,
+            proof,
+        );
+        if !is_valid {
+            self.state = ConnectionState::Established;
+            return Err(TransportError::Frame(FrameError::Malformed));
+        }
+
+        self.endpoint = new_endpoint;
+        self.state = ConnectionState::Established;
+        Ok(())
     }
 
     pub fn establish(&mut self) -> Result<(), TransportError> {
@@ -165,5 +225,37 @@ mod tests {
         assert_eq!(ConnectionState::Established, engine.state());
         assert_eq!(TransportKind::QuicMask, engine.active_kind());
         assert_eq!(0, engine.fallback_count());
+    }
+
+    #[test]
+    fn rekey_increments_epoch_and_keeps_established_state() {
+        let negotiator = ModeNegotiator::new(TransportMode::Udp, 3);
+        let udp = UdpTlsTransport::new(UdpConnectPolicy::Success);
+        let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+        engine.establish().expect("establish");
+
+        let epoch = engine.rekey().expect("rekey");
+
+        assert_eq!(1, epoch);
+        assert_eq!(ConnectionState::Established, engine.state());
+    }
+
+    #[test]
+    fn migration_updates_endpoint_with_valid_proof() {
+        let negotiator = ModeNegotiator::new(TransportMode::Udp, 3);
+        let udp = UdpTlsTransport::new(UdpConnectPolicy::Success);
+        let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+        engine.establish().expect("establish");
+        let next_endpoint = String::from("198.51.100.20:443");
+        let proof = engine.migration_proof(&next_endpoint);
+
+        engine
+            .migrate_endpoint(next_endpoint.clone(), proof)
+            .expect("migrate");
+
+        assert_eq!(next_endpoint, engine.endpoint());
+        assert_eq!(ConnectionState::Established, engine.state());
     }
 }
