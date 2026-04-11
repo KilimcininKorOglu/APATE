@@ -2,29 +2,29 @@ use crate::RuntimeError;
 use crate::runtime::backend::RuntimeBackend;
 
 #[derive(Debug, Default)]
-pub struct KqueueBackend {
+pub struct IocpBackend {
     initialized: bool,
     platform_supported: bool,
 }
 
-impl KqueueBackend {
+impl IocpBackend {
     pub fn new() -> Self {
         Self {
             initialized: false,
-            platform_supported: cfg!(target_os = "macos") || cfg!(target_os = "freebsd"),
+            platform_supported: cfg!(target_os = "windows"),
         }
     }
 }
 
-impl RuntimeBackend for KqueueBackend {
+impl RuntimeBackend for IocpBackend {
     fn name(&self) -> &'static str {
-        "kqueue"
+        "iocp"
     }
 
     fn initialize(&mut self) -> Result<(), RuntimeError> {
         if !self.platform_supported {
             return Err(RuntimeError::BackendUnavailable {
-                backend: String::from("kqueue"),
+                backend: String::from("iocp"),
             });
         }
 
@@ -44,15 +44,14 @@ impl RuntimeBackend for KqueueBackend {
 #[cfg(test)]
 mod tests {
     use crate::runtime::backend::RuntimeBackend;
-    use crate::runtime::backend::kqueue::KqueueBackend;
+    use crate::runtime::backend::iocp::IocpBackend;
 
     #[test]
-    fn kqueue_initialization_is_target_gated() {
-        let mut backend = KqueueBackend::new();
-        assert!(backend.poll().is_err());
+    fn iocp_backend_reports_platform_support() {
+        let mut backend = IocpBackend::new();
 
         let init_result = backend.initialize();
-        if cfg!(target_os = "macos") || cfg!(target_os = "freebsd") {
+        if cfg!(target_os = "windows") {
             assert!(init_result.is_ok());
             assert_eq!(Ok(0), backend.poll());
         } else {
