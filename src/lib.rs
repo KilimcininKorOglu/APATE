@@ -5,6 +5,7 @@ pub mod noise;
 pub mod runtime;
 pub mod telemetry;
 pub mod transport;
+pub mod tunnel;
 pub mod util;
 
 use thiserror::Error;
