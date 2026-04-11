@@ -34,3 +34,15 @@ lto = true
 codegen-units = 1
 strip = true
 panic = "abort"
+
+[[bench]]
+name = "packet_path"
+harness = false
+
+[[bench]]
+name = "crypto_wrappers"
+harness = false
+
+[[bench]]
+name = "handshake"
+harness = false
