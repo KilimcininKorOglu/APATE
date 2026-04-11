@@ -1,4 +1,5 @@
 use crate::transport::mode::{AttemptOutcome, ModeNegotiator, TransportKind};
+use crate::transport::quic_mask::{QuicMaskConnectPolicy, QuicMaskTransport};
 use crate::transport::tcp_tls::TcpTlsTransport;
 use crate::transport::udp_tls::UdpTlsTransport;
 use crate::transport::{Frame, FrameType, TransportError, TransportStrategy};
@@ -13,6 +14,7 @@ pub struct TransportEngine {
     active_kind: TransportKind,
     udp: UdpTlsTransport,
     tcp: TcpTlsTransport,
+    quic: QuicMaskTransport,
 }
 
 impl TransportEngine {
@@ -26,6 +28,7 @@ impl TransportEngine {
             active_kind,
             udp,
             tcp,
+            quic: QuicMaskTransport::new(QuicMaskConnectPolicy::Success),
         }
     }
 
@@ -70,8 +73,10 @@ impl TransportEngine {
                 }
             }
             TransportKind::QuicMask => {
-                self.state = ConnectionState::Closed;
-                return Err(TransportError::NotConnected);
+                if self.quic.connect(timeout)? != AttemptOutcome::Connected {
+                    self.state = ConnectionState::Closed;
+                    return Err(TransportError::Timeout);
+                }
             }
         }
 
@@ -99,7 +104,7 @@ impl TransportEngine {
         match self.active_kind {
             TransportKind::UdpTls => self.udp.send(frame),
             TransportKind::TcpTls => self.tcp.send(frame),
-            TransportKind::QuicMask => Err(TransportError::NotConnected),
+            TransportKind::QuicMask => self.quic.send(frame),
         }
     }
 
@@ -107,7 +112,7 @@ impl TransportEngine {
         match self.active_kind {
             TransportKind::UdpTls => self.udp.recv(),
             TransportKind::TcpTls => self.tcp.recv(),
-            TransportKind::QuicMask => Err(TransportError::NotConnected),
+            TransportKind::QuicMask => self.quic.recv(),
         }
     }
 }
@@ -145,6 +150,20 @@ mod tests {
 
         assert_eq!(ConnectionState::Established, engine.state());
         assert_eq!(TransportKind::UdpTls, engine.active_kind());
+        assert_eq!(0, engine.fallback_count());
+    }
+
+    #[test]
+    fn quic_mask_mode_establishes_without_fallback() {
+        let negotiator = ModeNegotiator::new(TransportMode::QuicMask, 3);
+        let udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
+        let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+
+        engine.establish().expect("forced quic establish");
+
+        assert_eq!(ConnectionState::Established, engine.state());
+        assert_eq!(TransportKind::QuicMask, engine.active_kind());
         assert_eq!(0, engine.fallback_count());
     }
 }

@@ -31,3 +31,21 @@ fn forced_tcp_mode_skips_udp_attempt() {
     assert_eq!(TransportKind::TcpTls, engine.active_kind());
     assert_eq!(0, engine.fallback_count());
 }
+
+#[test]
+fn forced_quic_mask_mode_uses_quic_transport_path() {
+    let negotiator = ModeNegotiator::new(TransportMode::QuicMask, 3);
+    let udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
+    let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
+    let mut engine = TransportEngine::new(negotiator, udp, tcp);
+
+    engine.establish().expect("forced quic establish");
+    let sequence = engine
+        .send_payload(b"integration-quic".to_vec())
+        .expect("quic send");
+
+    assert_eq!(ConnectionState::Established, engine.state());
+    assert_eq!(TransportKind::QuicMask, engine.active_kind());
+    assert_eq!(0, engine.fallback_count());
+    assert_eq!(0, sequence);
+}

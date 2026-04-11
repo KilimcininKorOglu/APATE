@@ -37,6 +37,7 @@ impl ModeNegotiator {
         match self.mode {
             TransportMode::Auto | TransportMode::Udp => TransportKind::UdpTls,
             TransportMode::Tcp => TransportKind::TcpTls,
+            TransportMode::QuicMask => TransportKind::QuicMask,
         }
     }
 
@@ -80,5 +81,11 @@ mod tests {
             None,
             negotiator.next_kind(TransportKind::TcpTls, AttemptOutcome::TimedOut)
         );
+    }
+
+    #[test]
+    fn quic_mask_mode_uses_quic_mask_transport_kind() {
+        let negotiator = ModeNegotiator::new(TransportMode::QuicMask, 3);
+        assert_eq!(TransportKind::QuicMask, negotiator.initial_kind());
     }
 }
