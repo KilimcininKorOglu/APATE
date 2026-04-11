@@ -1,8 +1,10 @@
 pub mod dns;
+pub mod doh;
 pub mod split;
 pub mod table;
 
 pub use dns::{DnsAction, DnsPolicy};
+pub use doh::{DohError, DohForwarder, DohResponse};
 pub use split::SplitPolicy;
 pub use table::{Cidr, RouteTable, RouteTableError, RouteTarget};
 
