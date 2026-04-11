@@ -55,8 +55,13 @@ impl AuthCoordinator {
 mod tests {
     use crate::auth::backend::AuthCoordinator;
     use crate::auth::static_key::StaticKeyBackend;
+    use crate::auth::token::{TokenBackend, TokenClaims, TokenPolicy};
     use crate::auth::{AuthError, AuthInput};
     use crate::util::AuthMethod;
+
+    fn token_signing_key() -> [u8; 32] {
+        [9_u8; 32]
+    }
 
     #[test]
     fn coordinator_dispatches_to_registered_backend() {
@@ -116,5 +121,42 @@ mod tests {
 
         assert_eq!(AuthError::Rejected, error);
         assert_eq!("authentication rejected", error.to_string());
+    }
+
+    #[test]
+    fn coordinator_supports_mixed_static_and_token_backends() {
+        let mut coordinator = AuthCoordinator::new(vec![AuthMethod::StaticKey, AuthMethod::Token]);
+        coordinator.register_backend(
+            AuthMethod::StaticKey,
+            Box::new(StaticKeyBackend::new(vec![b"ok-key".to_vec()])),
+        );
+        coordinator.register_backend(
+            AuthMethod::Token,
+            Box::new(TokenBackend::new(
+                token_signing_key(),
+                TokenPolicy {
+                    now_unix: 1_700_000_000,
+                    expected_audience: Some(String::from("apate-client")),
+                    expected_issuer: Some(String::from("apate-auth")),
+                },
+            )),
+        );
+
+        let token = TokenClaims {
+            subject: String::from("token-user"),
+            expires_at_unix: 1_700_000_300,
+            audience: Some(String::from("apate-client")),
+            issuer: Some(String::from("apate-auth")),
+        }
+        .encode_signed(&token_signing_key());
+        let identity = coordinator
+            .authenticate(AuthInput {
+                method: AuthMethod::Token,
+                payload: token.into_bytes(),
+            })
+            .expect("token auth");
+
+        assert_eq!("token-user", identity.subject);
+        assert_eq!(AuthMethod::Token, identity.method);
     }
 }
