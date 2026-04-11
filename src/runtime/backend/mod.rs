@@ -1,4 +1,6 @@
 pub mod epoll;
+#[cfg(any(target_os = "windows", test))]
+pub mod iocp;
 pub mod kqueue;
 
 use crate::RuntimeError;
@@ -13,4 +15,5 @@ pub trait RuntimeBackend {
 pub enum BackendKind {
     Epoll,
     Kqueue,
+    Iocp,
 }
