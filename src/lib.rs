@@ -4,6 +4,7 @@ pub mod crypto;
 pub mod noise;
 pub mod routing;
 pub mod runtime;
+pub mod stealth;
 pub mod telemetry;
 pub mod transport;
 pub mod tunnel;
