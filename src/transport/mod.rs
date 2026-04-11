@@ -1,21 +1,11 @@
+pub mod frame;
+
+pub use frame::{
+    DecodedFrame, FRAME_HEADER_LEN, Frame, FrameType, MAX_FRAME_PAYLOAD_LEN, PacketContext,
+    decode_frame, encode_frame,
+};
+
 use thiserror::Error;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FrameType {
-    Handshake,
-    Data,
-    Ack,
-    Rekey,
-    Migrate,
-    Close,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Frame {
-    pub frame_type: FrameType,
-    pub sequence: u64,
-    pub payload: Vec<u8>,
-}
 
 pub trait TransportStrategy {
     fn send(&mut self, frame: Frame) -> Result<(), TransportError>;
@@ -30,6 +20,8 @@ pub enum FrameError {
     UnsupportedType,
     #[error("frame payload exceeds limit")]
     PayloadTooLarge,
+    #[error("invalid frame flags")]
+    InvalidFlags,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
