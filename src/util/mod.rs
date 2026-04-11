@@ -16,6 +16,7 @@ pub enum TransportMode {
     Auto,
     Udp,
     Tcp,
+    QuicMask,
 }
 
 impl TransportMode {
@@ -24,6 +25,7 @@ impl TransportMode {
             Self::Auto => "auto",
             Self::Udp => "udp",
             Self::Tcp => "tcp",
+            Self::QuicMask => "quic_mask",
         }
     }
 
@@ -32,6 +34,7 @@ impl TransportMode {
             "auto" => Some(Self::Auto),
             "udp" => Some(Self::Udp),
             "tcp" => Some(Self::Tcp),
+            "quic_mask" => Some(Self::QuicMask),
             _ => None,
         }
     }
@@ -102,10 +105,12 @@ mod tests {
 
     #[test]
     fn transport_mode_roundtrip_parse() {
-        let mode = TransportMode::Udp;
-        let as_str = mode.as_str();
+        let modes = [TransportMode::Udp, TransportMode::QuicMask];
 
-        assert_eq!(Some(mode), TransportMode::parse(as_str));
+        for mode in modes {
+            let as_str = mode.as_str();
+            assert_eq!(Some(mode), TransportMode::parse(as_str));
+        }
     }
 
     #[test]
