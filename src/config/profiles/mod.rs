@@ -1,5 +1,6 @@
 mod chrome_131;
 mod firefox_130;
+mod safari_18;
 
 use thiserror::Error;
 
@@ -53,6 +54,8 @@ impl StealthProfile {
 pub enum ProfileError {
     #[error("unknown built-in stealth profile: {name}")]
     UnknownBuiltinProfile { name: String },
+    #[error("failed to read profile override from path: {path}")]
+    ProfileOverrideReadFailed { path: String },
     #[error("invalid profile field: {field}")]
     InvalidProfile { field: String },
     #[error("invalid override key: {key}")]
@@ -67,7 +70,7 @@ pub fn builtin_profile(name: &str) -> Option<StealthProfile> {
     match name {
         CHROME_131 => Some(chrome_131::profile()),
         FIREFOX_130 => Some(firefox_130::profile()),
-        SAFARI_18 => None,
+        SAFARI_18 => Some(safari_18::profile()),
         _ => None,
     }
 }
@@ -160,7 +163,8 @@ fn parse_override(name: &str, source: &str) -> Result<StealthProfile, ProfileErr
 #[cfg(test)]
 mod tests {
     use crate::config::profiles::{
-        CHROME_131, FIREFOX_130, ProfileError, builtin_profile, is_builtin_profile, load_profile,
+        CHROME_131, FIREFOX_130, ProfileError, SAFARI_18, builtin_profile, is_builtin_profile,
+        load_profile,
     };
 
     #[test]
@@ -171,6 +175,11 @@ mod tests {
     #[test]
     fn firefox_profile_exists() {
         assert!(builtin_profile(FIREFOX_130).is_some());
+    }
+
+    #[test]
+    fn safari_profile_exists() {
+        assert!(builtin_profile(SAFARI_18).is_some());
     }
 
     #[test]
