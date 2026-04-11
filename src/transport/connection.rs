@@ -1,14 +1,16 @@
 #[path = "migration.rs"]
 mod migration;
 
+use crate::transport::fec::{FecController, FecMode};
 use crate::transport::mode::{AttemptOutcome, ModeNegotiator, TransportKind};
+use crate::transport::pacing::CompressionPolicy;
 use crate::transport::quic_mask::{QuicMaskConnectPolicy, QuicMaskTransport};
 use crate::transport::tcp_tls::TcpTlsTransport;
 use crate::transport::udp_tls::UdpTlsTransport;
 use crate::transport::{Frame, FrameError, FrameType, TransportError, TransportStrategy};
 use crate::util::ConnectionState;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TransportEngine {
     state: ConnectionState,
     sequence: u64,
@@ -19,6 +21,8 @@ pub struct TransportEngine {
     session_id: [u8; 16],
     migration_secret: [u8; 32],
     endpoint: String,
+    fec_controller: FecController,
+    compression_policy: CompressionPolicy,
     udp: UdpTlsTransport,
     tcp: TcpTlsTransport,
     quic: QuicMaskTransport,
@@ -37,6 +41,8 @@ impl TransportEngine {
             session_id: [7_u8; 16],
             migration_secret: [13_u8; 32],
             endpoint: String::from("127.0.0.1:443"),
+            fec_controller: FecController::default(),
+            compression_policy: CompressionPolicy::default(),
             udp,
             tcp,
             quic: QuicMaskTransport::new(QuicMaskConnectPolicy::Success),
@@ -61,6 +67,19 @@ impl TransportEngine {
 
     pub fn endpoint(&self) -> &str {
         &self.endpoint
+    }
+
+    pub fn fec_mode(&self) -> FecMode {
+        self.fec_controller.mode()
+    }
+
+    pub fn update_observed_loss(&mut self, loss_rate: f32) {
+        self.fec_controller
+            .update_loss_rate(loss_rate, self.active_kind);
+    }
+
+    pub fn build_fec_parity(&self, data_shards: &[Vec<u8>]) -> Vec<Vec<u8>> {
+        self.fec_controller.build_parity_shards(data_shards)
     }
 
     pub fn migration_proof(&self, new_endpoint: &str) -> [u8; 16] {
@@ -151,6 +170,10 @@ impl TransportEngine {
 
         let sequence = self.sequence;
         self.sequence = self.sequence.saturating_add(1);
+        let payload = self
+            .compression_policy
+            .compress_rle(&payload)
+            .unwrap_or(payload);
         let frame = Frame {
             frame_type: FrameType::Data,
             sequence,
@@ -179,6 +202,7 @@ impl TransportEngine {
 
 #[cfg(test)]
 mod tests {
+    use crate::transport::FecMode;
     use crate::transport::connection::TransportEngine;
     use crate::transport::mode::{ModeNegotiator, TransportKind};
     use crate::transport::tcp_tls::{TcpConnectPolicy, TcpTlsTransport};
@@ -257,5 +281,18 @@ mod tests {
 
         assert_eq!(next_endpoint, engine.endpoint());
         assert_eq!(ConnectionState::Established, engine.state());
+    }
+
+    #[test]
+    fn tcp_transport_keeps_fec_disabled_even_under_high_loss() {
+        let negotiator = ModeNegotiator::new(TransportMode::Tcp, 3);
+        let udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
+        let tcp = TcpTlsTransport::new(TcpConnectPolicy::Success);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+        engine.establish().expect("tcp establish");
+
+        engine.update_observed_loss(0.35);
+
+        assert_eq!(FecMode::Disabled, engine.fec_mode());
     }
 }

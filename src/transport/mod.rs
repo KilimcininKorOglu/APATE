@@ -1,6 +1,7 @@
 pub mod ack;
 pub mod congestion;
 pub mod connection;
+pub mod fec;
 pub mod frame;
 pub mod loss;
 pub mod mode;
@@ -9,6 +10,7 @@ pub mod quic_mask;
 pub mod tcp_tls;
 pub mod udp_tls;
 
+pub use fec::{FecController, FecMode, recover_single_lost_shard};
 pub use frame::{
     DecodedFrame, FRAME_HEADER_LEN, Frame, FrameType, MAX_FRAME_PAYLOAD_LEN, PacketContext,
     decode_frame, encode_frame,

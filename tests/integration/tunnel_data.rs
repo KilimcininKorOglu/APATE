@@ -1,8 +1,14 @@
+use apate::transport::FecMode;
 use apate::transport::ack::AckWindow;
 use apate::transport::congestion::{CongestionController, CongestionState};
+use apate::transport::connection::TransportEngine;
 use apate::transport::loss::LossDetector;
+use apate::transport::mode::ModeNegotiator;
 use apate::transport::pacing::PacingScheduler;
+use apate::transport::tcp_tls::{TcpConnectPolicy, TcpTlsTransport};
+use apate::transport::udp_tls::{UdpConnectPolicy, UdpTlsTransport};
 use apate::tunnel::{LinuxTunAdapter, MacOsTunAdapter, TunnelAdapter, TunnelPacket};
+use apate::util::TransportMode;
 use apate::{
     config::types::{DnsMode, RoutingMode},
     routing::{Cidr, DnsAction, DohForwarder, RouteTarget, RoutingEngine},
@@ -126,4 +132,33 @@ fn doh_forwarder_builds_query_for_dual_stack_records() {
 
     assert!(a_query.len() > 12);
     assert!(aaaa_query.len() > 12);
+}
+
+#[test]
+fn adaptive_fec_enables_parity_under_loss_and_disables_in_tcp_mode() {
+    let negotiator = ModeNegotiator::new(TransportMode::Udp, 3);
+    let udp = UdpTlsTransport::new(UdpConnectPolicy::Success);
+    let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
+    let mut udp_engine = TransportEngine::new(negotiator, udp, tcp);
+    udp_engine.establish().expect("udp establish");
+    udp_engine.update_observed_loss(0.22);
+
+    let parity = udp_engine.build_fec_parity(&[vec![1_u8, 2, 3], vec![4_u8, 5, 6]]);
+
+    assert_eq!(FecMode::DoubleParity, udp_engine.fec_mode());
+    assert_eq!(2, parity.len());
+
+    let tcp_negotiator = ModeNegotiator::new(TransportMode::Tcp, 3);
+    let tcp_udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
+    let tcp_transport = TcpTlsTransport::new(TcpConnectPolicy::Success);
+    let mut tcp_engine = TransportEngine::new(tcp_negotiator, tcp_udp, tcp_transport);
+    tcp_engine.establish().expect("tcp establish");
+    tcp_engine.update_observed_loss(0.30);
+
+    assert_eq!(FecMode::Disabled, tcp_engine.fec_mode());
+    assert!(
+        tcp_engine
+            .build_fec_parity(&[vec![9_u8, 9], vec![8_u8, 8]])
+            .is_empty()
+    );
 }
