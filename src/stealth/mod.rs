@@ -1,4 +1,5 @@
 pub mod client_hello;
+pub mod facade;
 pub mod padding;
 pub mod quic_camouflage;
 pub mod server_hello;

@@ -74,6 +74,7 @@ impl Default for TransportConfig {
 pub struct StealthConfig {
     pub profile: String,
     pub profile_path: Option<String>,
+    pub facade_on_auth_failure: bool,
 }
 
 impl Default for StealthConfig {
@@ -81,6 +82,7 @@ impl Default for StealthConfig {
         Self {
             profile: String::from("chrome_131"),
             profile_path: None,
+            facade_on_auth_failure: true,
         }
     }
 }
@@ -205,5 +207,6 @@ mod tests {
 
         assert!(config.validate().is_err());
         assert_eq!(TransportMode::Auto, config.transport.mode);
+        assert!(config.stealth.facade_on_auth_failure);
     }
 }
