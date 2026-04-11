@@ -2,6 +2,7 @@ use apate::transport::ack::AckWindow;
 use apate::transport::congestion::{CongestionController, CongestionState};
 use apate::transport::loss::LossDetector;
 use apate::transport::pacing::PacingScheduler;
+use apate::tunnel::{LinuxTunAdapter, MacOsTunAdapter, TunnelAdapter, TunnelPacket};
 
 #[test]
 fn retransmit_flow_recovers_dropped_packet() {
@@ -45,4 +46,45 @@ fn congestion_controller_transitions_after_loss_and_ack() {
 
     controller.on_ack();
     assert_eq!(CongestionState::CongestionAvoidance, controller.state());
+}
+
+#[test]
+fn linux_tunnel_adapter_exchanges_packet_in_loopback_path() {
+    let raw = [
+        0x45, 0x00, 0x00, 0x14, 0, 0, 0, 0, 64, 6, 0, 0, 10, 0, 0, 1, 10, 0, 0, 2,
+    ];
+    let packet = TunnelPacket::parse(&raw).expect("valid ipv4 packet");
+    let mut adapter = LinuxTunAdapter::new(String::from("tun1"));
+    adapter.open().expect("linux open");
+    adapter.configure(1500).expect("linux configure");
+
+    adapter
+        .write_packet(packet.clone())
+        .expect("linux write packet");
+    let received = adapter
+        .read_packet()
+        .expect("linux read result")
+        .expect("linux packet expected");
+
+    assert_eq!(packet.as_bytes(), received.as_bytes());
+}
+
+#[test]
+fn macos_tunnel_adapter_exchanges_packet_in_loopback_path() {
+    let mut raw = vec![0_u8; 40];
+    raw[0] = 0x60;
+    let packet = TunnelPacket::parse(&raw).expect("valid ipv6 packet");
+    let mut adapter = MacOsTunAdapter::new(String::from("utun5"));
+    adapter.open().expect("macos open");
+    adapter.configure(1500).expect("macos configure");
+
+    adapter
+        .write_packet(packet.clone())
+        .expect("macos write packet");
+    let received = adapter
+        .read_packet()
+        .expect("macos read result")
+        .expect("macos packet expected");
+
+    assert_eq!(packet.as_bytes(), received.as_bytes());
 }
