@@ -3,6 +3,9 @@ use apate::auth::{
     ProbeGatePolicy, ProbeGateResult, StaticKeyBackend, TokenBackend, TokenClaims, TokenPolicy,
     evaluate_probe_gate,
 };
+use apate::config::parser::parse_config;
+use apate::config::profiles::FIREFOX_130;
+use apate::stealth::StealthRuntime;
 use apate::stealth::facade::FacadeResponder;
 use apate::util::AuthMethod;
 
@@ -217,4 +220,30 @@ fn untrusted_certificate_routes_to_facade() {
     );
 
     assert_eq!(ProbeGateResult::ServeFacade, gate);
+}
+
+#[test]
+fn config_selected_profile_and_auth_permutation_loads_runtime() {
+    let config_source = r#"
+        client.server = "198.51.100.10:443"
+        auth.methods = ["static_key", "certificate"]
+        transport.mode = "quic_mask"
+        stealth.profile = "firefox_130"
+        routing.mode = "split"
+        dns.mode = "fallback"
+    "#;
+    let config = parse_config(config_source).expect("config permutation must parse");
+    let runtime = StealthRuntime::from_profile_name(&config.stealth.profile, None)
+        .expect("selected profile must load");
+
+    assert_eq!(
+        FIREFOX_130,
+        runtime.profile().name,
+        "profile selection mismatch for handshake permutation"
+    );
+    assert_eq!(
+        vec![AuthMethod::StaticKey, AuthMethod::Certificate],
+        config.auth.methods,
+        "auth method order mismatch in parsed permutation"
+    );
 }
