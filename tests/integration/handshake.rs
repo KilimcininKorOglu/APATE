@@ -1,49 +1,19 @@
 use apate::auth::{
-    AuthBackend, AuthError, AuthIdentity, AuthInput, ProbeGatePolicy, ProbeGateResult,
+    AuthCoordinator, AuthInput, ProbeGatePolicy, ProbeGateResult, StaticKeyBackend,
     evaluate_probe_gate,
 };
 use apate::stealth::facade::FacadeResponder;
 use apate::util::AuthMethod;
 
-#[derive(Debug, Clone)]
-struct StaticTestBackend {
-    key: Vec<u8>,
-}
-
-impl StaticTestBackend {
-    fn new(key: Vec<u8>) -> Self {
-        Self { key }
-    }
-}
-
-impl AuthBackend for StaticTestBackend {
-    fn authenticate(&self, input: AuthInput) -> Result<AuthIdentity, AuthError> {
-        if input.payload.is_empty() {
-            return Err(AuthError::EmptyPayload);
-        }
-
-        if input.method != AuthMethod::StaticKey {
-            return Err(AuthError::UnsupportedBackend {
-                method: input.method,
-            });
-        }
-
-        if input.payload == self.key {
-            Ok(AuthIdentity {
-                subject: String::from("static-client"),
-                method: AuthMethod::StaticKey,
-            })
-        } else {
-            Err(AuthError::Rejected)
-        }
-    }
-}
-
 #[test]
 fn valid_auth_routes_to_tunnel_path() {
-    let backend = StaticTestBackend::new(b"top-secret".to_vec());
+    let mut coordinator = AuthCoordinator::new(vec![AuthMethod::StaticKey]);
+    coordinator.register_backend(
+        AuthMethod::StaticKey,
+        Box::new(StaticKeyBackend::new(vec![b"top-secret".to_vec()])),
+    );
     let gate = evaluate_probe_gate(
-        backend.authenticate(AuthInput {
+        coordinator.authenticate(AuthInput {
             method: AuthMethod::StaticKey,
             payload: b"top-secret".to_vec(),
         }),
@@ -56,15 +26,19 @@ fn valid_auth_routes_to_tunnel_path() {
         panic!("expected authenticated tunnel admission");
     };
 
-    assert_eq!("static-client", identity.subject);
+    assert_eq!("static-key", identity.subject);
     assert_eq!(AuthMethod::StaticKey, identity.method);
 }
 
 #[test]
 fn invalid_auth_routes_to_facade_without_tunnel_leaks() {
-    let backend = StaticTestBackend::new(b"top-secret".to_vec());
+    let mut coordinator = AuthCoordinator::new(vec![AuthMethod::StaticKey]);
+    coordinator.register_backend(
+        AuthMethod::StaticKey,
+        Box::new(StaticKeyBackend::new(vec![b"top-secret".to_vec()])),
+    );
     let gate = evaluate_probe_gate(
-        backend.authenticate(AuthInput {
+        coordinator.authenticate(AuthInput {
             method: AuthMethod::StaticKey,
             payload: b"wrong".to_vec(),
         }),
