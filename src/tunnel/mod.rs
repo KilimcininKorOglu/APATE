@@ -1,10 +1,18 @@
 pub mod packet;
+#[cfg(any(target_os = "freebsd", test))]
+pub mod tun_freebsd;
 pub mod tun_linux;
 pub mod tun_macos;
+#[cfg(any(target_os = "windows", test))]
+pub mod tun_windows;
 
 pub use packet::{IpVersion, TunnelPacket};
+#[cfg(any(target_os = "freebsd", test))]
+pub use tun_freebsd::FreeBsdTunAdapter;
 pub use tun_linux::LinuxTunAdapter;
 pub use tun_macos::MacOsTunAdapter;
+#[cfg(any(target_os = "windows", test))]
+pub use tun_windows::WindowsTunAdapter;
 
 use thiserror::Error;
 
