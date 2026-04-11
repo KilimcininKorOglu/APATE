@@ -1,5 +1,6 @@
 pub mod client_hello;
 pub mod padding;
+pub mod quic_camouflage;
 pub mod server_hello;
 pub mod timing;
 pub mod tls_camouflage;
