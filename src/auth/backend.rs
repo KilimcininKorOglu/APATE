@@ -54,6 +54,9 @@ impl AuthCoordinator {
 #[cfg(test)]
 mod tests {
     use crate::auth::backend::AuthCoordinator;
+    use crate::auth::certificate::{
+        CertificateBackend, CertificateClaims, CertificatePolicy, TrustAnchor,
+    };
     use crate::auth::static_key::StaticKeyBackend;
     use crate::auth::token::{TokenBackend, TokenClaims, TokenPolicy};
     use crate::auth::{AuthError, AuthInput};
@@ -61,6 +64,13 @@ mod tests {
 
     fn token_signing_key() -> [u8; 32] {
         [9_u8; 32]
+    }
+
+    fn certificate_anchor() -> TrustAnchor {
+        TrustAnchor {
+            issuer: String::from("apate-test-ca"),
+            key: [0x11_u8; 32],
+        }
     }
 
     #[test]
@@ -158,5 +168,37 @@ mod tests {
 
         assert_eq!("token-user", identity.subject);
         assert_eq!(AuthMethod::Token, identity.method);
+    }
+
+    #[test]
+    fn coordinator_dispatches_certificate_backend_by_method() {
+        let mut coordinator = AuthCoordinator::new(vec![AuthMethod::Certificate]);
+        coordinator.register_backend(
+            AuthMethod::Certificate,
+            Box::new(CertificateBackend::new(
+                vec![certificate_anchor()],
+                CertificatePolicy {
+                    now_unix: 1_700_000_000,
+                },
+            )),
+        );
+
+        let certificate = CertificateClaims {
+            subject: String::from("cert-user"),
+            issuer: String::from("apate-test-ca"),
+            serial: String::from("CERT-001"),
+            not_after_unix: 1_700_000_300,
+            public_key: String::from("pk-cert"),
+        }
+        .encode_signed(&[0x11_u8; 32]);
+        let identity = coordinator
+            .authenticate(AuthInput {
+                method: AuthMethod::Certificate,
+                payload: certificate.into_bytes(),
+            })
+            .expect("certificate auth");
+
+        assert_eq!("cert-user", identity.subject);
+        assert_eq!(AuthMethod::Certificate, identity.method);
     }
 }

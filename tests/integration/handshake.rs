@@ -1,12 +1,17 @@
 use apate::auth::{
-    AuthCoordinator, AuthInput, ProbeGatePolicy, ProbeGateResult, StaticKeyBackend, TokenBackend,
-    TokenClaims, TokenPolicy, evaluate_probe_gate,
+    AuthCoordinator, AuthInput, CertificateBackend, CertificateClaims, CertificatePolicy,
+    ProbeGatePolicy, ProbeGateResult, StaticKeyBackend, TokenBackend, TokenClaims, TokenPolicy,
+    evaluate_probe_gate,
 };
 use apate::stealth::facade::FacadeResponder;
 use apate::util::AuthMethod;
 
 fn token_signing_key() -> [u8; 32] {
     [9_u8; 32]
+}
+
+fn fixture_path(name: &str) -> String {
+    format!("{}/tests/fixtures/certs/{name}", env!("CARGO_MANIFEST_DIR"))
 }
 
 #[test]
@@ -135,6 +140,76 @@ fn invalid_token_routes_to_facade_in_mixed_backend_config() {
         coordinator.authenticate(AuthInput {
             method: AuthMethod::Token,
             payload: expired_token.into_bytes(),
+        }),
+        ProbeGatePolicy {
+            facade_on_auth_failure: true,
+        },
+    );
+
+    assert_eq!(ProbeGateResult::ServeFacade, gate);
+}
+
+#[test]
+fn valid_certificate_auth_routes_to_tunnel_when_ca_is_trusted() {
+    let mut coordinator = AuthCoordinator::new(vec![AuthMethod::Certificate]);
+    let cert_backend = CertificateBackend::from_anchor_files(
+        &[fixture_path("ca_primary.anchor").as_str()],
+        CertificatePolicy {
+            now_unix: 1_700_000_000,
+        },
+    )
+    .expect("load trusted ca");
+    coordinator.register_backend(AuthMethod::Certificate, Box::new(cert_backend));
+
+    let certificate = CertificateClaims {
+        subject: String::from("cert-user"),
+        issuer: String::from("apate-test-ca"),
+        serial: String::from("CERT-INT-001"),
+        not_after_unix: 1_700_000_500,
+        public_key: String::from("pk-cert"),
+    }
+    .encode_signed(&[0x11_u8; 32]);
+    let gate = evaluate_probe_gate(
+        coordinator.authenticate(AuthInput {
+            method: AuthMethod::Certificate,
+            payload: certificate.into_bytes(),
+        }),
+        ProbeGatePolicy {
+            facade_on_auth_failure: true,
+        },
+    );
+
+    let ProbeGateResult::AllowTunnel(identity) = gate else {
+        panic!("expected certificate-authenticated tunnel admission");
+    };
+    assert_eq!("cert-user", identity.subject);
+    assert_eq!(AuthMethod::Certificate, identity.method);
+}
+
+#[test]
+fn untrusted_certificate_routes_to_facade() {
+    let mut coordinator = AuthCoordinator::new(vec![AuthMethod::Certificate]);
+    let cert_backend = CertificateBackend::from_anchor_files(
+        &[fixture_path("ca_primary.anchor").as_str()],
+        CertificatePolicy {
+            now_unix: 1_700_000_000,
+        },
+    )
+    .expect("load trusted ca");
+    coordinator.register_backend(AuthMethod::Certificate, Box::new(cert_backend));
+
+    let untrusted_certificate = CertificateClaims {
+        subject: String::from("untrusted-user"),
+        issuer: String::from("apate-secondary-ca"),
+        serial: String::from("CERT-INT-002"),
+        not_after_unix: 1_700_000_500,
+        public_key: String::from("pk-untrusted"),
+    }
+    .encode_signed(&[0x22_u8; 32]);
+    let gate = evaluate_probe_gate(
+        coordinator.authenticate(AuthInput {
+            method: AuthMethod::Certificate,
+            payload: untrusted_certificate.into_bytes(),
         }),
         ProbeGatePolicy {
             facade_on_auth_failure: true,

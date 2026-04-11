@@ -1,8 +1,10 @@
 pub mod backend;
+pub mod certificate;
 pub mod static_key;
 pub mod token;
 
 pub use backend::AuthCoordinator;
+pub use certificate::{CertificateBackend, CertificateClaims, CertificatePolicy, TrustAnchor};
 pub use static_key::StaticKeyBackend;
 pub use token::{TokenBackend, TokenClaims, TokenPolicy};
 
