@@ -3,6 +3,10 @@ use apate::transport::congestion::{CongestionController, CongestionState};
 use apate::transport::loss::LossDetector;
 use apate::transport::pacing::PacingScheduler;
 use apate::tunnel::{LinuxTunAdapter, MacOsTunAdapter, TunnelAdapter, TunnelPacket};
+use apate::{
+    config::types::{DnsMode, RoutingMode},
+    routing::{Cidr, DnsAction, DohForwarder, RouteTarget, RoutingEngine},
+};
 
 #[test]
 fn retransmit_flow_recovers_dropped_packet() {
@@ -87,4 +91,39 @@ fn macos_tunnel_adapter_exchanges_packet_in_loopback_path() {
         .expect("macos packet expected");
 
     assert_eq!(packet.as_bytes(), received.as_bytes());
+}
+
+#[test]
+fn split_routing_prefers_more_specific_prefix_for_tunnel_path() {
+    let mut engine = RoutingEngine::new(RoutingMode::Split, DnsMode::Doh, true);
+    engine.add_split_tunnel_route(Cidr::parse("10.0.0.0/8").expect("cidr"));
+    engine.add_split_tunnel_route(Cidr::parse("10.10.0.0/16").expect("cidr"));
+
+    let tunneled = engine.route_packet([10, 10, 1, 7].into());
+    let bypassed = engine.route_packet([192, 0, 2, 10].into());
+
+    assert_eq!(RouteTarget::Tunnel, tunneled);
+    assert_eq!(RouteTarget::Bypass, bypassed);
+}
+
+#[test]
+fn dns_fallback_blocks_bypass_when_doh_unavailable() {
+    let engine = RoutingEngine::new(RoutingMode::Split, DnsMode::Fallback, false);
+    let bypass_destination = [1, 1, 1, 1].into();
+    let action = engine.route_dns_query(bypass_destination);
+
+    assert_eq!(DnsAction::Blocked, action);
+}
+
+#[test]
+fn doh_forwarder_builds_query_for_dual_stack_records() {
+    let forwarder =
+        DohForwarder::new(String::from("https://resolver.example/dns-query")).expect("forwarder");
+    let a_query = forwarder.build_query("example.com", 1, 0x1200).expect("a");
+    let aaaa_query = forwarder
+        .build_query("example.com", 28, 0x1201)
+        .expect("aaaa");
+
+    assert!(a_query.len() > 12);
+    assert!(aaaa_query.len() > 12);
 }
