@@ -6,12 +6,14 @@ pub enum HandshakeState {
     EphemeralExchanged,
     Authenticated,
     Established,
+    Rekeying,
     Failed,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NoiseSession {
     pub state: HandshakeState,
+    pub key_epoch: u64,
     pub transcript_hash: [u8; 32],
 }
 
@@ -19,6 +21,7 @@ impl Default for NoiseSession {
     fn default() -> Self {
         Self {
             state: HandshakeState::Init,
+            key_epoch: 0,
             transcript_hash: [0_u8; 32],
         }
     }
@@ -34,6 +37,8 @@ impl NoiseSession {
                     HandshakeState::Authenticated
                 )
                 | (HandshakeState::Authenticated, HandshakeState::Established)
+                | (HandshakeState::Established, HandshakeState::Rekeying)
+                | (HandshakeState::Rekeying, HandshakeState::Established)
                 | (_, HandshakeState::Failed)
         );
 
@@ -43,6 +48,16 @@ impl NoiseSession {
 
         self.state = next_state;
         Ok(())
+    }
+
+    pub fn begin_rekey(&mut self) -> Result<(), SecurityError> {
+        self.transition(HandshakeState::Rekeying)
+    }
+
+    pub fn finalize_rekey(&mut self) -> Result<u64, SecurityError> {
+        self.transition(HandshakeState::Established)?;
+        self.key_epoch = self.key_epoch.saturating_add(1);
+        Ok(self.key_epoch)
     }
 }
 
@@ -71,5 +86,25 @@ mod tests {
         );
         assert!(session.transition(HandshakeState::Authenticated).is_ok());
         assert!(session.transition(HandshakeState::Established).is_ok());
+    }
+
+    #[test]
+    fn rekey_updates_epoch_after_establishment() {
+        let mut session = NoiseSession::default();
+        session
+            .transition(HandshakeState::EphemeralExchanged)
+            .expect("ephemeral");
+        session
+            .transition(HandshakeState::Authenticated)
+            .expect("authenticated");
+        session
+            .transition(HandshakeState::Established)
+            .expect("established");
+
+        session.begin_rekey().expect("begin rekey");
+        let epoch = session.finalize_rekey().expect("finalize rekey");
+
+        assert_eq!(HandshakeState::Established, session.state);
+        assert_eq!(1, epoch);
     }
 }
