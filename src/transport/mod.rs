@@ -1,9 +1,14 @@
+pub mod connection;
 pub mod frame;
+pub mod mode;
+pub mod tcp_tls;
+pub mod udp_tls;
 
 pub use frame::{
     DecodedFrame, FRAME_HEADER_LEN, Frame, FrameType, MAX_FRAME_PAYLOAD_LEN, PacketContext,
     decode_frame, encode_frame,
 };
+pub use mode::{AttemptOutcome, ModeNegotiator, TransportKind};
 
 use thiserror::Error;
 
