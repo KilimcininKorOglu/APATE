@@ -1,5 +1,7 @@
 pub mod client_hello;
+pub mod padding;
 pub mod server_hello;
+pub mod timing;
 pub mod tls_camouflage;
 
 use crate::config::profiles::{ProfileError, StealthProfile, load_profile};
