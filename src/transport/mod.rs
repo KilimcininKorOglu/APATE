@@ -1,6 +1,7 @@
 pub mod connection;
 pub mod frame;
 pub mod mode;
+pub mod quic_mask;
 pub mod tcp_tls;
 pub mod udp_tls;
 
