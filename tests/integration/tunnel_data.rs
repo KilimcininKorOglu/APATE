@@ -10,6 +10,7 @@ use apate::transport::udp_tls::{UdpConnectPolicy, UdpTlsTransport};
 use apate::tunnel::{LinuxTunAdapter, MacOsTunAdapter, TunnelAdapter, TunnelPacket};
 use apate::util::TransportMode;
 use apate::{
+    config::parser::parse_config,
     config::types::{DnsMode, RoutingMode},
     routing::{Cidr, DnsAction, DohForwarder, RouteTarget, RoutingEngine},
 };
@@ -161,4 +162,50 @@ fn adaptive_fec_enables_parity_under_loss_and_disables_in_tcp_mode() {
             .build_fec_parity(&[vec![9_u8, 9], vec![8_u8, 8]])
             .is_empty()
     );
+}
+
+#[test]
+fn routing_and_dns_config_permutations_route_expected_paths() {
+    let scenarios = vec![
+        (
+            "split",
+            "fallback",
+            false,
+            RouteTarget::Bypass,
+            DnsAction::Blocked,
+        ),
+        (
+            "full",
+            "plain",
+            true,
+            RouteTarget::Tunnel,
+            DnsAction::UsePlain,
+        ),
+    ];
+
+    for (routing_mode, dns_mode, doh_available, expected_route, expected_dns) in scenarios {
+        let config_source = format!(
+            r#"
+            client.server = "203.0.113.20:443"
+            auth.methods = ["static_key"]
+            routing.mode = "{routing_mode}"
+            dns.mode = "{dns_mode}"
+        "#
+        );
+        let config = parse_config(&config_source).expect("routing/dns permutation parse");
+        let mut engine = RoutingEngine::new(config.routing.mode, config.dns.mode, doh_available);
+        engine.add_split_tunnel_route(Cidr::parse("10.0.0.0/8").expect("cidr"));
+
+        let route_target = engine.route_packet([198, 51, 100, 5].into());
+        let dns_action = engine.route_dns_query([198, 51, 100, 5].into());
+
+        assert_eq!(
+            expected_route, route_target,
+            "routing.mode={routing_mode} produced unexpected route"
+        );
+        assert_eq!(
+            expected_dns, dns_action,
+            "dns.mode={dns_mode} produced unexpected dns policy"
+        );
+    }
 }
