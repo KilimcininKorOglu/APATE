@@ -43,30 +43,30 @@ Mask symbolizes deception and camouflage. Shield-ring symbolizes resilient encry
 
 ### 3.1 Brand Colors
 
-| Role      | Name        | Hex     | RGB              | Usage |
-|-----------|-------------|---------|------------------|-------|
-| Primary   | Abyss Navy  | #0B1220 | rgb(11, 18, 32)  | Main surfaces, hero backgrounds |
-| Secondary | Cobalt Flux | #1D4ED8 | rgb(29, 78, 216) | Links, primary actions |
-| Accent    | Signal Cyan | #22D3EE | rgb(34, 211, 238)| Highlights, active indicators |
+| Role      | Name        | Hex     | RGB               | Usage                           |
+|-----------|-------------|---------|-------------------|---------------------------------|
+| Primary   | Abyss Navy  | #0B1220 | rgb(11, 18, 32)   | Main surfaces, hero backgrounds |
+| Secondary | Cobalt Flux | #1D4ED8 | rgb(29, 78, 216)  | Links, primary actions          |
+| Accent    | Signal Cyan | #22D3EE | rgb(34, 211, 238) | Highlights, active indicators   |
 
 ### 3.2 Neutrals
 
-| Role            | Hex     | Usage |
-|-----------------|---------|-------|
-| Text Primary    | #E6EDF7 | Main body text on dark surfaces |
-| Text Secondary  | #9FB0C8 | Supporting labels and meta text |
-| Background      | #070B14 | App/page background |
-| Surface         | #111827 | Cards, panes, CLI panels |
-| Border          | #223045 | Dividers and control borders |
+| Role           | Hex     | Usage                           |
+|----------------|---------|---------------------------------|
+| Text Primary   | #E6EDF7 | Main body text on dark surfaces |
+| Text Secondary | #9FB0C8 | Supporting labels and meta text |
+| Background     | #070B14 | App/page background             |
+| Surface        | #111827 | Cards, panes, CLI panels        |
+| Border         | #223045 | Dividers and control borders    |
 
 ### 3.3 Semantic Colors
 
-| Role    | Hex     | Usage |
-|---------|---------|-------|
-| Success | #22C55E | Healthy tunnel/session states |
+| Role    | Hex     | Usage                                 |
+|---------|---------|---------------------------------------|
+| Success | #22C55E | Healthy tunnel/session states         |
 | Error   | #EF4444 | Failures, auth rejection, hard errors |
-| Warning | #F59E0B | Degraded network states |
-| Info    | #38BDF8 | Informational telemetry |
+| Warning | #F59E0B | Degraded network states               |
+| Info    | #38BDF8 | Informational telemetry               |
 
 ### 3.4 Dark Mode
 
@@ -96,22 +96,22 @@ For light mode: swap background/surface to `#F8FAFC` / `#FFFFFF`, switch text pr
 
 ### 4.1 Font Stack
 
-| Role     | Font                      | Weights      | Fallback |
-|----------|---------------------------|--------------|----------|
-| Headings | Space Grotesk             | 600, 700     | Inter, system-ui, sans-serif |
-| Body     | Inter                     | 400, 500     | system-ui, -apple-system, sans-serif |
-| Code     | JetBrains Mono            | 400, 500     | ui-monospace, SFMono-Regular, monospace |
+| Role     | Font           | Weights  | Fallback                                |
+|----------|----------------|----------|-----------------------------------------|
+| Headings | Space Grotesk  | 600, 700 | Inter, system-ui, sans-serif            |
+| Body     | Inter          | 400, 500 | system-ui, -apple-system, sans-serif    |
+| Code     | JetBrains Mono | 400, 500 | ui-monospace, SFMono-Regular, monospace |
 
 ### 4.2 Type Scale
 
-| Element | Size   | Weight | Line Height |
-|---------|--------|--------|-------------|
-| H1      | 2.25rem| 700    | 1.2 |
-| H2      | 1.75rem| 600    | 1.25 |
-| H3      | 1.375rem| 600   | 1.35 |
-| Body    | 1rem   | 400    | 1.6 |
-| Small   | 0.875rem| 400   | 1.5 |
-| Code    | 0.9rem | 500    | 1.5 |
+| Element | Size     | Weight | Line Height |
+|---------|----------|--------|-------------|
+| H1      | 2.25rem  | 700    | 1.2         |
+| H2      | 1.75rem  | 600    | 1.25        |
+| H3      | 1.375rem | 600    | 1.35        |
+| Body    | 1rem     | 400    | 1.6         |
+| Small   | 0.875rem | 400    | 1.5         |
+| Code    | 0.9rem   | 500    | 1.5         |
 
 ## 5. Voice & Tone
 
@@ -131,13 +131,13 @@ For light mode: swap background/surface to `#F8FAFC` / `#FFFFFF`, switch text pr
 
 ### 5.3 Vocabulary
 
-| Prefer                 | Avoid                    |
-|------------------------|--------------------------|
-| stealth profile        | magic mode               |
-| authenticated session  | secure-ish connection    |
-| deterministic fallback | auto magic               |
-| threat model           | scary internet           |
-| transport overhead     | blazing fast (unproven)  |
+| Prefer                 | Avoid                   |
+|------------------------|-------------------------|
+| stealth profile        | magic mode              |
+| authenticated session  | secure-ish connection   |
+| deterministic fallback | auto magic              |
+| threat model           | scary internet          |
+| transport overhead     | blazing fast (unproven) |
 
 ## 6. Visual Language
 
@@ -164,11 +164,11 @@ Base unit `4px`, scale: `4, 8, 12, 16, 20, 24, 32, 40, 48, 64`.
 
 ## 7. Assets Checklist
 
-| Asset          | Format      | Size                | Status |
-|----------------|-------------|---------------------|--------|
-| Logo (full)    | SVG + PNG   | vector / 1024px     | Required for v1 |
-| Icon           | SVG + PNG   | 512px, 192px, 64px  | Required for v1 |
-| Favicon        | ICO + PNG   | 32px, 16px          | Required for v1 |
-| OG Image       | PNG         | 1200×630            | Required for v1 |
-| Social Banner  | PNG         | 1500×500            | Required for v1 |
-| Website Hero   | PNG/SVG     | 1600×900            | Required for v1 |
+| Asset         | Format    | Size               | Status          |
+|---------------|-----------|--------------------|-----------------|
+| Logo (full)   | SVG + PNG | vector / 1024px    | Required for v1 |
+| Icon          | SVG + PNG | 512px, 192px, 64px | Required for v1 |
+| Favicon       | ICO + PNG | 32px, 16px         | Required for v1 |
+| OG Image      | PNG       | 1200×630           | Required for v1 |
+| Social Banner | PNG       | 1500×500           | Required for v1 |
+| Website Hero  | PNG/SVG   | 1600×900           | Required for v1 |

@@ -29,7 +29,7 @@ Project prioritizes three outcomes equally: low dependency count, low per-packet
 
 ### 1.4 Competitive Landscape
 
-| Capability                | Apate | WireGuard | OpenVPN |
+| Capability               | Apate | WireGuard | OpenVPN |
 |--------------------------|:-----:|:---------:|:-------:|
 | Built-in DPI camouflage  |  Yes  |    No     | Limited |
 | Active probing defense   |  Yes  |    No     |   No    |
@@ -39,16 +39,16 @@ Project prioritizes three outcomes equally: low dependency count, low per-packet
 
 ## 2. Core Concepts
 
-| Concept              | Definition |
-|---------------------|------------|
-| Stealth profile     | Configurable fingerprint and traffic-shaping behavior used to mimic legitimate client traffic patterns |
-| Camouflage mode     | Wire-level disguise strategy used for transport packets (TLS-like or QUIC-like presentation) |
-| Handshake           | Initial key establishment sequence that authenticates peers and derives transport keys |
-| Connection migration| Continuation of tunnel session across client network path/IP changes without full reconnect |
-| FEC group           | Packet set used for parity-based loss recovery without immediate retransmission |
-| Control channel     | Reserved tunnel stream for protocol control messages (rekey, migrate, close) |
-| Auth backend        | Mechanism that validates client identity (static key, token, certificate) |
-| Web facade          | Server behavior presented to unauthenticated probes to reduce protocol exposure |
+| Concept              | Definition                                                                                             |
+|----------------------|--------------------------------------------------------------------------------------------------------|
+| Stealth profile      | Configurable fingerprint and traffic-shaping behavior used to mimic legitimate client traffic patterns |
+| Camouflage mode      | Wire-level disguise strategy used for transport packets (TLS-like or QUIC-like presentation)           |
+| Handshake            | Initial key establishment sequence that authenticates peers and derives transport keys                 |
+| Connection migration | Continuation of tunnel session across client network path/IP changes without full reconnect            |
+| FEC group            | Packet set used for parity-based loss recovery without immediate retransmission                        |
+| Control channel      | Reserved tunnel stream for protocol control messages (rekey, migrate, close)                           |
+| Auth backend         | Mechanism that validates client identity (static key, token, certificate)                              |
+| Web facade           | Server behavior presented to unauthenticated probes to reduce protocol exposure                        |
 
 ## 3. Functional Requirements
 
@@ -278,12 +278,12 @@ Project prioritizes three outcomes equally: low dependency count, low per-packet
 
 ### 4.3 External Integrations
 
-| Integration              | Purpose | Fallback Behavior |
-|-------------------------|---------|-------------------|
-| Network stack (UDP/TCP) | Wire transport path | Mode fallback and reconnect policy |
-| Tunnel device interface | Inject/read IP packets | Session startup fails with explicit device error |
-| DNS upstream resolvers  | Resolve DNS in protected path | Configured fallback mode if secure upstream unavailable |
-| TLS cert/domain facade inputs | Probe-resistant facade behavior | Tunnel path remains gated by auth check |
+| Integration                   | Purpose                         | Fallback Behavior                                       |
+|-------------------------------|---------------------------------|---------------------------------------------------------|
+| Network stack (UDP/TCP)       | Wire transport path             | Mode fallback and reconnect policy                      |
+| Tunnel device interface       | Inject/read IP packets          | Session startup fails with explicit device error        |
+| DNS upstream resolvers        | Resolve DNS in protected path   | Configured fallback mode if secure upstream unavailable |
+| TLS cert/domain facade inputs | Probe-resistant facade behavior | Tunnel path remains gated by auth check                 |
 
 ## 5. Data Model
 
@@ -291,43 +291,43 @@ Project prioritizes three outcomes equally: low dependency count, low per-packet
 
 #### ConnectionSession
 
-| Field             | Type   | Required | Description                            | Constraints |
-|------------------|--------|----------|----------------------------------------|-------------|
-| connectionId     | Bytes  | Yes      | Stable identifier for tunnel session   | Unique per active session |
-| state            | Enum   | Yes      | Session lifecycle state                | Valid state transitions only |
-| transportMode    | Enum   | Yes      | Active wire mode                       | Must be configured/negotiated value |
-| authMethod       | Enum   | Yes      | Method used for client validation      | One of enabled backends |
-| establishedAt    | Time   | Yes      | Session establishment timestamp         | Immutable after set |
-| peerEndpoint     | String | Yes      | Current remote address mapping         | Updatable only via migration rules |
+| Field         | Type   | Required | Description                          | Constraints                         |
+|---------------|--------|----------|--------------------------------------|-------------------------------------|
+| connectionId  | Bytes  | Yes      | Stable identifier for tunnel session | Unique per active session           |
+| state         | Enum   | Yes      | Session lifecycle state              | Valid state transitions only        |
+| transportMode | Enum   | Yes      | Active wire mode                     | Must be configured/negotiated value |
+| authMethod    | Enum   | Yes      | Method used for client validation    | One of enabled backends             |
+| establishedAt | Time   | Yes      | Session establishment timestamp      | Immutable after set                 |
+| peerEndpoint  | String | Yes      | Current remote address mapping       | Updatable only via migration rules  |
 
 #### CryptoContext
 
-| Field               | Type  | Required | Description                           | Constraints |
-|--------------------|-------|----------|---------------------------------------|-------------|
-| keyEpoch           | U64   | Yes      | Current key generation/version        | Monotonic increasing |
-| txNonceCounter     | U64   | Yes      | Outbound nonce counter                | Must not reuse values |
-| rxWindowState      | Blob  | Yes      | Replay/loss tracking metadata         | Must align with frame sequence |
-| rekeyTimePolicySec | U32   | Yes      | Time-based rekey trigger              | Positive value |
-| rekeyBytePolicy    | U64   | Yes      | Byte-volume rekey trigger             | Positive value |
+| Field              | Type | Required | Description                    | Constraints                    |
+|--------------------|------|----------|--------------------------------|--------------------------------|
+| keyEpoch           | U64  | Yes      | Current key generation/version | Monotonic increasing           |
+| txNonceCounter     | U64  | Yes      | Outbound nonce counter         | Must not reuse values          |
+| rxWindowState      | Blob | Yes      | Replay/loss tracking metadata  | Must align with frame sequence |
+| rekeyTimePolicySec | U32  | Yes      | Time-based rekey trigger       | Positive value                 |
+| rekeyBytePolicy    | U64  | Yes      | Byte-volume rekey trigger      | Positive value                 |
 
 #### StealthProfile
 
-| Field             | Type   | Required | Description                           | Constraints |
-|------------------|--------|----------|---------------------------------------|-------------|
+| Field            | Type   | Required | Description                           | Constraints                                     |
+|------------------|--------|----------|---------------------------------------|-------------------------------------------------|
 | profileName      | String | Yes      | Selected profile identifier           | Must exist in built-in or custom profile source |
-| camouflageMode   | Enum   | Yes      | Wire presentation mode                | Supported mode only |
-| packetSizePolicy | Object | Yes      | Size shaping parameters               | Within MTU-safe bounds |
-| timingPolicy     | Object | Yes      | Inter-packet timing/jitter parameters | Must respect max jitter budget |
-| idleMasking      | Bool   | Yes      | Idle padding traffic enablement       | Default false/true per config |
+| camouflageMode   | Enum   | Yes      | Wire presentation mode                | Supported mode only                             |
+| packetSizePolicy | Object | Yes      | Size shaping parameters               | Within MTU-safe bounds                          |
+| timingPolicy     | Object | Yes      | Inter-packet timing/jitter parameters | Must respect max jitter budget                  |
+| idleMasking      | Bool   | Yes      | Idle padding traffic enablement       | Default false/true per config                   |
 
 #### AuthPolicy
 
-| Field           | Type   | Required | Description                           | Constraints |
-|----------------|--------|----------|---------------------------------------|-------------|
-| enabledMethods | Array  | Yes      | Allowed auth backends                 | Non-empty |
-| staticKeySet   | Blob   | No       | Authorized static keys                | Required when static key backend enabled |
-| tokenVerifier  | Object | No       | Token signature/claims policy         | Required when token backend enabled |
-| certificateCa  | Blob   | No       | Trust anchor for certificate backend  | Required when certificate backend enabled |
+| Field          | Type   | Required | Description                          | Constraints                               |
+|----------------|--------|----------|--------------------------------------|-------------------------------------------|
+| enabledMethods | Array  | Yes      | Allowed auth backends                | Non-empty                                 |
+| staticKeySet   | Blob   | No       | Authorized static keys               | Required when static key backend enabled  |
+| tokenVerifier  | Object | No       | Token signature/claims policy        | Required when token backend enabled       |
+| certificateCa  | Blob   | No       | Trust anchor for certificate backend | Required when certificate backend enabled |
 
 ### 5.2 Relationships
 
@@ -351,11 +351,11 @@ No external management API in v1.0. Exposed control surface is CLI plus configur
 
 ### 6.2 Command Surface Overview
 
-| Command Pattern                 | Description                                  | Auth Context |
-|--------------------------------|----------------------------------------------|--------------|
+| Command Pattern                | Description                                  | Auth Context             |
+|--------------------------------|----------------------------------------------|--------------------------|
 | `apate-client --config <path>` | Starts client tunnel session from config     | Local process privileges |
 | `apate-server --config <path>` | Starts server listener and auth policy stack | Local process privileges |
-| `SIGHUP` (where supported)     | Triggers profile/config reload behavior      | Local signal permission |
+| `SIGHUP` (where supported)     | Triggers profile/config reload behavior      | Local signal permission  |
 
 ### 6.3 Authentication & Authorization
 
@@ -444,27 +444,27 @@ Deployments can enable one or multiple methods.
 
 ### 10.1 Response Time Targets
 
-| Metric                             | Target |
-|------------------------------------|--------|
-| Session handshake compute budget   | < 400μs (excluding network RTT) |
-| Per-packet processing overhead      | < 10μs steady state (excluding path delay) |
-| Reconnect fast path compute budget | < 50μs where resume conditions valid |
+| Metric                             | Target                                     |
+|------------------------------------|--------------------------------------------|
+| Session handshake compute budget   | < 400μs (excluding network RTT)            |
+| Per-packet processing overhead     | < 10μs steady state (excluding path delay) |
+| Reconnect fast path compute budget | < 50μs where resume conditions valid       |
 
 ### 10.2 Throughput Targets
 
-| Scenario                        | Target |
-|---------------------------------|--------|
-| 1 Gbps environment              | Near line-rate tunnel throughput |
-| 10 Gbps environment (multi-core)| High-throughput operation with minimal collapse under loss |
-| Lossy WAN links                 | Maintain usable throughput with adaptive recovery |
+| Scenario                         | Target                                                     |
+|----------------------------------|------------------------------------------------------------|
+| 1 Gbps environment               | Near line-rate tunnel throughput                           |
+| 10 Gbps environment (multi-core) | High-throughput operation with minimal collapse under loss |
+| Lossy WAN links                  | Maintain usable throughput with adaptive recovery          |
 
 ### 10.3 Resource Limits
 
-| Resource          | Requirement |
-|-------------------|-------------|
-| Memory usage      | Bounded by configured buffer and connection limits |
+| Resource          | Requirement                                                    |
+|-------------------|----------------------------------------------------------------|
+| Memory usage      | Bounded by configured buffer and connection limits             |
 | CPU overhead      | Optimized for sustained packet path and cryptographic workload |
-| Dependency growth | Must remain within project-defined direct/transitive limits |
+| Dependency growth | Must remain within project-defined direct/transitive limits    |
 
 ## 11. Constraints & Non-Goals
 

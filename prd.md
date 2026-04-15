@@ -21,16 +21,16 @@ No tokio. No quinn. No rustls. No kitchen-sink frameworks. Audited crypto librar
 
 The guiding principle: **"buy crypto, build protocol."**
 
-| Layer              | Approach        | Rationale                                                  |
-|--------------------|-----------------|-------------------------------------------------------------|
+| Layer              | Approach        | Rationale                                                                          |
+|--------------------|-----------------|------------------------------------------------------------------------------------|
 | Cryptography       | Crate (audited) | Hand-rolled crypto is a liability; use formally verified / audited implementations |
-| Platform syscalls  | Crate (thin)    | `libc` for portability, avoid raw asm per-platform          |
-| Async I/O          | Hand-written    | tokio is 200+ transitive deps; we need a minimal reactor    |
-| Transport protocol | Hand-written    | Core differentiator, must be fully controlled               |
-| Stealth / DPI      | Hand-written    | Core differentiator, no existing crate does this            |
-| TUN interface      | Hand-written    | Thin ioctl wrapper, not worth a dependency                  |
-| Config parser      | Hand-written    | TOML subset, < 300 LOC                                      |
-| Framing / FEC      | Hand-written    | Tightly coupled to transport, custom requirements           |
+| Platform syscalls  | Crate (thin)    | `libc` for portability, avoid raw asm per-platform                                 |
+| Async I/O          | Hand-written    | tokio is 200+ transitive deps; we need a minimal reactor                           |
+| Transport protocol | Hand-written    | Core differentiator, must be fully controlled                                      |
+| Stealth / DPI      | Hand-written    | Core differentiator, no existing crate does this                                   |
+| TUN interface      | Hand-written    | Thin ioctl wrapper, not worth a dependency                                         |
+| Config parser      | Hand-written    | TOML subset, < 300 LOC                                                             |
+| Framing / FEC      | Hand-written    | Tightly coupled to transport, custom requirements                                  |
 
 **Hard rules:**
 - Maximum **15 direct dependencies** in Cargo.toml (excluding dev-dependencies)
@@ -204,13 +204,13 @@ No tokio. No async-std. No mio. Direct kernel interface.
 
 **Reactor backends (compile-time selected):**
 
-| Platform      | Backend     | Syscall Interface  |
-|---------------|-------------|--------------------|
-| Linux ≥ 5.11  | `io_uring`  | `libc` wrappers    |
-| Linux < 5.11  | `epoll`     | `libc` wrappers    |
-| macOS         | `kqueue`    | `libc` wrappers    |
-| FreeBSD       | `kqueue`    | `libc` wrappers    |
-| Windows       | `IOCP`      | `windows-sys` crate|
+| Platform     | Backend    | Syscall Interface   |
+|--------------|------------|---------------------|
+| Linux ≥ 5.11 | `io_uring` | `libc` wrappers     |
+| Linux < 5.11 | `epoll`    | `libc` wrappers     |
+| macOS        | `kqueue`   | `libc` wrappers     |
+| FreeBSD      | `kqueue`   | `libc` wrappers     |
+| Windows      | `IOCP`     | `windows-sys` crate |
 
 **Design:**
 
@@ -232,17 +232,17 @@ Thin wrappers over audited, minimal crates. No hand-rolled primitives.
 
 #### 4.2.1 Selected Crates
 
-| Primitive            | Crate                     | Why this one                                        |
-|----------------------|---------------------------|-----------------------------------------------------|
-| ChaCha20-Poly1305    | `chacha20poly1305`        | RustCrypto, audited, SIMD-accelerated, `#[no_std]`  |
-| AES-256-GCM          | `aes-gcm`                 | RustCrypto, AES-NI + CLMUL intrinsics, `#[no_std]`  |
-| X25519               | `x25519-dalek`            | Widely audited, constant-time, `#[no_std]`           |
-| Ed25519              | `ed25519-dalek`           | Same ecosystem as x25519, batch verify support       |
-| ML-KEM-768           | `ml-kem`                  | RustCrypto, FIPS 203 compliant, `#[no_std]`          |
-| BLAKE3               | `blake3`                  | Official crate, SIMD, ≥ 2 GB/s, `#[no_std]`         |
-| CSPRNG               | `rand_core` + `rand_chacha` | OsRng + ChaCha20Rng DRBG, industry standard       |
-| Key zeroization      | `zeroize`                 | Compiler-fence backed, derive macro, ~0 cost         |
-| Constant-time ops    | `subtle`                  | RustCrypto standard, `Choice` / `ConstantTimeEq`    |
+| Primitive         | Crate                       | Why this one                                       |
+|-------------------|-----------------------------|----------------------------------------------------|
+| ChaCha20-Poly1305 | `chacha20poly1305`          | RustCrypto, audited, SIMD-accelerated, `#[no_std]` |
+| AES-256-GCM       | `aes-gcm`                   | RustCrypto, AES-NI + CLMUL intrinsics, `#[no_std]` |
+| X25519            | `x25519-dalek`              | Widely audited, constant-time, `#[no_std]`         |
+| Ed25519           | `ed25519-dalek`             | Same ecosystem as x25519, batch verify support     |
+| ML-KEM-768        | `ml-kem`                    | RustCrypto, FIPS 203 compliant, `#[no_std]`        |
+| BLAKE3            | `blake3`                    | Official crate, SIMD, ≥ 2 GB/s, `#[no_std]`        |
+| CSPRNG            | `rand_core` + `rand_chacha` | OsRng + ChaCha20Rng DRBG, industry standard        |
+| Key zeroization   | `zeroize`                   | Compiler-fence backed, derive macro, ~0 cost       |
+| Constant-time ops | `subtle`                    | RustCrypto standard, `Choice` / `ConstantTimeEq`   |
 
 All RustCrypto crates share the same trait ecosystem (`aead`, `cipher`, `digest`), minimizing glue code.
 
@@ -326,14 +326,14 @@ Pattern: **Noise_IK** (client knows server's static public key)
 
 **Handshake latency budget:**
 
-| Step                    | Target     |
-|-------------------------|------------|
-| Key generation (X25519) | < 50μs     |
-| ML-KEM encapsulate      | < 100μs    |
-| DH operations (×3)      | < 150μs    |
-| AEAD encrypt/decrypt    | < 5μs      |
-| HKDF combine (X25519+KEM)| < 5μs    |
-| **Total 1-RTT**         | **< 400μs**|
+| Step                      | Target      |
+|---------------------------|-------------|
+| Key generation (X25519)   | < 50μs      |
+| ML-KEM encapsulate        | < 100μs     |
+| DH operations (×3)        | < 150μs     |
+| AEAD encrypt/decrypt      | < 5μs       |
+| HKDF combine (X25519+KEM) | < 5μs       |
+| **Total 1-RTT**           | **< 400μs** |
 
 **0-RTT Reconnection:**
 - After initial handshake, both sides cache a "resumption PSK"
@@ -353,11 +353,11 @@ A custom lightweight multiplexed transport with **three wire modes**, selectable
 
 #### 4.4.1 Transport Modes
 
-| Mode           | Wire Format                  | Port | When to Use                              |
-|----------------|------------------------------|------|------------------------------------------|
-| `tls13` (default) | Apate frames inside TLS 1.3 Application Data records over UDP | 443  | Most networks; looks like QUIC/HTTP3     |
-| `quic`         | Apate frames disguised as QUIC Initial + Short Header packets | 443  | Networks that specifically whitelist QUIC |
-| `tcp`          | Apate frames inside TLS 1.3 records over TCP                 | 443  | Restrictive networks that block all UDP  |
+| Mode              | Wire Format                                                   | Port | When to Use                               |
+|-------------------|---------------------------------------------------------------|------|-------------------------------------------|
+| `tls13` (default) | Apate frames inside TLS 1.3 Application Data records over UDP | 443  | Most networks; looks like QUIC/HTTP3      |
+| `quic`            | Apate frames disguised as QUIC Initial + Short Header packets | 443  | Networks that specifically whitelist QUIC |
+| `tcp`             | Apate frames inside TLS 1.3 records over TCP                  | 443  | Restrictive networks that block all UDP   |
 
 **Auto-negotiation:**
 1. Client tries `tls13` (UDP) first
@@ -408,16 +408,16 @@ All frames are wrapped in the stealth layer (§4.5) before hitting the wire.
 
 **Frame types:**
 
-| Type | Name       | Purpose                        |
-|------|------------|--------------------------------|
-| 0x0  | DATA       | Tunnel payload (IP packets)    |
-| 0x1  | ACK        | Acknowledgment                 |
-| 0x2  | FEC        | Forward error correction parity|
-| 0x3  | PING       | Keepalive                      |
-| 0x4  | REKEY      | Key rotation signal            |
-| 0x5  | MIGRATE    | Connection migration           |
-| 0x6  | CLOSE      | Graceful shutdown              |
-| 0x7  | PAD        | Padding-only (stealth)         |
+| Type | Name    | Purpose                         |
+|------|---------|---------------------------------|
+| 0x0  | DATA    | Tunnel payload (IP packets)     |
+| 0x1  | ACK     | Acknowledgment                  |
+| 0x2  | FEC     | Forward error correction parity |
+| 0x3  | PING    | Keepalive                       |
+| 0x4  | REKEY   | Key rotation signal             |
+| 0x5  | MIGRATE | Connection migration            |
+| 0x6  | CLOSE   | Graceful shutdown               |
+| 0x7  | PAD     | Padding-only (stealth)          |
 
 **Flags:**
 - `FIN` (0x01): Last frame for this stream
@@ -751,18 +751,18 @@ IP Packet from TUN
 
 ### 5.3 Steady-State Latency Budget (per packet)
 
-| Step              | Target      |
-|-------------------|-------------|
-| TUN read          | 1μs         |
-| Route lookup      | 0.1μs       |
-| FEC encode        | 2μs         |
-| Frame build       | 0.1μs       |
-| AEAD encrypt      | 1μs (1400B) |
-| Pad + shape       | 0.1μs       |
-| TLS wrap          | 0.05μs      |
-| Pacing delay      | 0-2ms*      |
-| UDP send          | 1μs         |
-| **Total overhead**| **< 10μs**  |
+| Step               | Target      |
+|--------------------|-------------|
+| TUN read           | 1μs         |
+| Route lookup       | 0.1μs       |
+| FEC encode         | 2μs         |
+| Frame build        | 0.1μs       |
+| AEAD encrypt       | 1μs (1400B) |
+| Pad + shape        | 0.1μs       |
+| TLS wrap           | 0.05μs      |
+| Pacing delay       | 0-2ms*      |
+| UDP send           | 1μs         |
+| **Total overhead** | **< 10μs**  |
 
 *Pacing delay is network-dependent, not protocol overhead.
 
@@ -857,17 +857,17 @@ post_quantum = true              # require hybrid KX from clients
 
 ### 7.1 Threat Model
 
-| Threat                     | Mitigation                                      |
-|----------------------------|--------------------------------------------------|
-| Passive DPI                | TLS 1.3 camouflage, traffic shaping              |
-| Active probing             | Web facade, cookie-based client detection         |
-| Statistical analysis       | Packet length padding, timing jitter, dummy traffic|
-| Replay attacks             | Nonce counters, 0-RTT limited to non-critical data|
-| Key compromise             | PFS via ephemeral keys, 60s rekeying              |
-| Side-channel (timing)      | Constant-time crypto, no secret-dependent branches|
-| Supply chain               | Minimal deps (~10 direct), `cargo audit` + `cargo deny` in CI |
-| Connection correlation     | Connection migration, no fixed identifiers        |
-| DNS leaks                  | All DNS forced through tunnel                     |
+| Threat                 | Mitigation                                                    |
+|------------------------|---------------------------------------------------------------|
+| Passive DPI            | TLS 1.3 camouflage, traffic shaping                           |
+| Active probing         | Web facade, cookie-based client detection                     |
+| Statistical analysis   | Packet length padding, timing jitter, dummy traffic           |
+| Replay attacks         | Nonce counters, 0-RTT limited to non-critical data            |
+| Key compromise         | PFS via ephemeral keys, 60s rekeying                          |
+| Side-channel (timing)  | Constant-time crypto, no secret-dependent branches            |
+| Supply chain           | Minimal deps (~10 direct), `cargo audit` + `cargo deny` in CI |
+| Connection correlation | Connection migration, no fixed identifiers                    |
+| DNS leaks              | All DNS forced through tunnel                                 |
 
 ### 7.2 Key Hierarchy
 
@@ -934,35 +934,35 @@ panic = "abort"
 
 ### 8.2 Dependency Justification (`DEPS.md`)
 
-| Crate               | Direct Deps | Justification                                               |
-|----------------------|-------------|--------------------------------------------------------------|
-| `chacha20poly1305`   | ~4          | Audited AEAD, SIMD-accelerated, constant-time                |
-| `aes-gcm`           | ~4          | Audited AEAD, AES-NI hardware acceleration                   |
-| `x25519-dalek`      | ~3          | Formally verified field arithmetic (fiat-crypto backend)     |
-| `ed25519-dalek`     | ~3          | Same ecosystem, batch verification, widely deployed          |
-| `ml-kem`            | ~3          | RustCrypto, FIPS 203 compliant, post-quantum KEM             |
-| `blake3`            | ~1          | Official implementation, ≥ 2 GB/s, used by WireGuard-rs too |
-| `rand_core`         | ~1          | Trait definitions + OsRng, minimal                           |
-| `rand_chacha`       | ~1          | ChaCha20-based DRBG, deterministic for testing               |
-| `zeroize`           | 0           | Zero-cost key zeroization, derive macro                      |
-| `subtle`            | 0           | Constant-time primitives (`Choice`, `ConstantTimeEq`)        |
-| `libc`              | 0           | Syscall types/constants, no runtime cost                     |
-| `windows-sys`       | 0           | Windows API bindings (IOCP, WinSock), cfg(windows) only      |
+| Crate              | Direct Deps | Justification                                               |
+|--------------------|-------------|-------------------------------------------------------------|
+| `chacha20poly1305` | ~4          | Audited AEAD, SIMD-accelerated, constant-time               |
+| `aes-gcm`          | ~4          | Audited AEAD, AES-NI hardware acceleration                  |
+| `x25519-dalek`     | ~3          | Formally verified field arithmetic (fiat-crypto backend)    |
+| `ed25519-dalek`    | ~3          | Same ecosystem, batch verification, widely deployed         |
+| `ml-kem`           | ~3          | RustCrypto, FIPS 203 compliant, post-quantum KEM            |
+| `blake3`           | ~1          | Official implementation, ≥ 2 GB/s, used by WireGuard-rs too |
+| `rand_core`        | ~1          | Trait definitions + OsRng, minimal                          |
+| `rand_chacha`      | ~1          | ChaCha20-based DRBG, deterministic for testing              |
+| `zeroize`          | 0           | Zero-cost key zeroization, derive macro                     |
+| `subtle`           | 0           | Constant-time primitives (`Choice`, `ConstantTimeEq`)       |
+| `libc`             | 0           | Syscall types/constants, no runtime cost                    |
+| `windows-sys`      | 0           | Windows API bindings (IOCP, WinSock), cfg(windows) only     |
 
 **Estimated totals:** ~12 direct, ~42 transitive (within 50 limit)
 
 ### 8.3 What We Explicitly Do NOT Depend On
 
-| Crate/Category       | Reason                                                     |
-|----------------------|-------------------------------------------------------------|
-| `tokio` / `async-std`| 200+ transitive deps, massive binary, unneeded features     |
-| `quinn` / `quic`     | Full QUIC is overkill, we need custom transport             |
-| `rustls` / `openssl` | We don't do real TLS, just mimic the wire format            |
-| `hyper` / `reqwest`  | HTTP framework too heavy, facade is hand-written            |
-| `serde` / `toml`     | Config parser is < 300 LOC, not worth 30+ transitive deps   |
-| `tun` / `tun-tap`    | Thin ioctl wrapper, platform-specific, < 200 LOC each       |
-| `ring`               | Duplicates RustCrypto; pick one ecosystem, not both          |
-| `clap`               | CLI is simple, hand-written arg parser suffices              |
+| Crate/Category        | Reason                                                    |
+|-----------------------|-----------------------------------------------------------|
+| `tokio` / `async-std` | 200+ transitive deps, massive binary, unneeded features   |
+| `quinn` / `quic`      | Full QUIC is overkill, we need custom transport           |
+| `rustls` / `openssl`  | We don't do real TLS, just mimic the wire format          |
+| `hyper` / `reqwest`   | HTTP framework too heavy, facade is hand-written          |
+| `serde` / `toml`      | Config parser is < 300 LOC, not worth 30+ transitive deps |
+| `tun` / `tun-tap`     | Thin ioctl wrapper, platform-specific, < 200 LOC each     |
+| `ring`                | Duplicates RustCrypto; pick one ecosystem, not both       |
+| `clap`                | CLI is simple, hand-written arg parser suffices           |
 
 ---
 
@@ -986,24 +986,24 @@ cargo build --release --target aarch64-unknown-linux-musl
 
 ### 9.2 Binary Size Target
 
-| Configuration         | Target Size   |
-|-----------------------|---------------|
-| Release (stripped)    | < 2 MB        |
-| Release + LTO         | < 1.5 MB      |
-| `#[no_std]` embedded | < 500 KB      |
+| Configuration        | Target Size |
+|----------------------|-------------|
+| Release (stripped)   | < 2 MB      |
+| Release + LTO        | < 1.5 MB    |
+| `#[no_std]` embedded | < 500 KB    |
 
 ### 9.3 Platform Matrix
 
-| Platform          | Status  | Reactor   | TUN             |
-|-------------------|---------|-----------|-----------------|
-| Linux x86_64      | v1.0    | io_uring  | /dev/net/tun    |
-| Linux aarch64     | v1.0    | io_uring  | /dev/net/tun    |
-| Linux (old kernel)| v1.0    | epoll     | /dev/net/tun    |
-| Windows x86_64    | v1.0    | IOCP      | WinTUN          |
-| macOS x86_64      | v1.0    | kqueue    | utun            |
-| macOS aarch64     | v1.0    | kqueue    | utun            |
-| FreeBSD           | v1.1    | kqueue    | /dev/tun        |
-| OpenWrt (MIPS)    | v1.1    | epoll     | /dev/net/tun    |
+| Platform           | Status | Reactor  | TUN          |
+|--------------------|--------|----------|--------------|
+| Linux x86_64       | v1.0   | io_uring | /dev/net/tun |
+| Linux aarch64      | v1.0   | io_uring | /dev/net/tun |
+| Linux (old kernel) | v1.0   | epoll    | /dev/net/tun |
+| Windows x86_64     | v1.0   | IOCP     | WinTUN       |
+| macOS x86_64       | v1.0   | kqueue   | utun         |
+| macOS aarch64      | v1.0   | kqueue   | utun         |
+| FreeBSD            | v1.1   | kqueue   | /dev/tun     |
+| OpenWrt (MIPS)     | v1.1   | epoll    | /dev/net/tun |
 
 ---
 
@@ -1011,29 +1011,29 @@ cargo build --release --target aarch64-unknown-linux-musl
 
 ### 10.1 Throughput
 
-| Scenario                    | Target         |
-|-----------------------------|----------------|
-| Single core, 1 Gbps link    | > 950 Mbps     |
-| Single core, 10 Gbps link   | > 5 Gbps       |
-| Multi-core, 10 Gbps link    | > 9 Gbps       |
+| Scenario                  | Target     |
+|---------------------------|------------|
+| Single core, 1 Gbps link  | > 950 Mbps |
+| Single core, 10 Gbps link | > 5 Gbps   |
+| Multi-core, 10 Gbps link  | > 9 Gbps   |
 
 ### 10.2 Latency Overhead
 
-| Metric                  | Target      |
-|-------------------------|-------------|
-| Per-packet overhead     | < 10μs      |
-| Handshake (1-RTT)       | < 400μs     |
-| Reconnect (0-RTT)       | < 50μs      |
-| Rekey (seamless)        | 0 added     |
+| Metric              | Target  |
+|---------------------|---------|
+| Per-packet overhead | < 10μs  |
+| Handshake (1-RTT)   | < 400μs |
+| Reconnect (0-RTT)   | < 50μs  |
+| Rekey (seamless)    | 0 added |
 
 ### 10.3 Memory
 
-| Component               | Budget      |
-|--------------------------|-------------|
-| Buffer pool              | 6 MB        |
-| Routing table (10K rules)| < 1 MB      |
-| Crypto state per conn    | < 1 KB      |
-| Total server (256 clients)| < 32 MB    |
+| Component                  | Budget  |
+|----------------------------|---------|
+| Buffer pool                | 6 MB    |
+| Routing table (10K rules)  | < 1 MB  |
+| Crypto state per conn      | < 1 KB  |
+| Total server (256 clients) | < 32 MB |
 
 ---
 
@@ -1150,31 +1150,31 @@ cargo build --release --target aarch64-unknown-linux-musl
 
 ## 13. Comparison
 
-| Feature                | WireGuard | OpenVPN  | Apate        |
-|------------------------|-----------|----------|--------------|
-| Dependencies           | Kernel/Go | OpenSSL  | **Minimal (~10)**|
-| Handshake RTT          | 1         | 2-3      | **1 (0 PSK)**|
-| DPI resistance         | None      | Minimal  | **Full**     |
-| Protocol obfuscation   | No        | Pluggable| **Built-in** |
-| Active probing defense | No        | No       | **Yes**      |
-| Traffic shaping        | No        | No       | **Yes**      |
-| FEC                    | No        | No       | **Yes**      |
-| Connection migration   | Partial   | No       | **Yes**      |
-| Per-packet overhead    | ~10μs     | ~50μs    | **< 10μs**   |
-| Binary size            | ~600KB    | ~2MB     | **< 1.5MB**  |
-| Codebase               | ~4K LOC   | ~100K LOC| **~15K LOC** |
+| Feature                | WireGuard | OpenVPN   | Apate             |
+|------------------------|-----------|-----------|-------------------|
+| Dependencies           | Kernel/Go | OpenSSL   | **Minimal (~10)** |
+| Handshake RTT          | 1         | 2-3       | **1 (0 PSK)**     |
+| DPI resistance         | None      | Minimal   | **Full**          |
+| Protocol obfuscation   | No        | Pluggable | **Built-in**      |
+| Active probing defense | No        | No        | **Yes**           |
+| Traffic shaping        | No        | No        | **Yes**           |
+| FEC                    | No        | No        | **Yes**           |
+| Connection migration   | Partial   | No        | **Yes**           |
+| Per-packet overhead    | ~10μs     | ~50μs     | **< 10μs**        |
+| Binary size            | ~600KB    | ~2MB      | **< 1.5MB**       |
+| Codebase               | ~4K LOC   | ~100K LOC | **~15K LOC**      |
 
 ---
 
 ## 14. Resolved Design Decisions
 
-| #  | Question                          | Decision                                                                 |
-|----|-----------------------------------|--------------------------------------------------------------------------|
-| 1  | QUIC fallback mode?               | **Yes.** Fake QUIC (UDP/443) supported as a stealth mode alongside TLS 1.3. |
-| 2  | TCP mode for extreme environments?| **Yes.** TCP/443 fallback is mandatory. Auto-negotiation: UDP first, TCP after 3s timeout. FEC disabled in TCP mode. |
-| 3  | Pluggable stealth profiles?       | **Both.** Compiled-in defaults (Chrome/Firefox/Safari) + runtime override via TOML file. SIGHUP hot-reload. |
-| 4  | Client authentication?            | **Pluggable auth backend.** Three methods: static key (default), HMAC-signed tokens, X.509 certificates. Server enables any combination. |
-| 5  | Post-quantum readiness?           | **v1.0.** Hybrid X25519 + ML-KEM-768 (FIPS 203) key exchange. Enabled by default, configurable off. |
-| 6  | Windows support?                  | **v1.0.** WinTUN + IOCP reactor. All major desktop platforms ship in v1.0. |
-| 7  | Payload compression?              | **v1.0.** Hand-written LZ4 block compression (~400 LOC). Auto mode skips high-entropy payloads. |
-| 8  | DNS-over-HTTPS?                   | **v1.0.** Built-in DoH stub resolver, enabled by default. Hand-written minimal HTTP/1.1 POST client. |
+| # | Question                           | Decision                                                                                                                                 |
+|---|------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | QUIC fallback mode?                | **Yes.** Fake QUIC (UDP/443) supported as a stealth mode alongside TLS 1.3.                                                              |
+| 2 | TCP mode for extreme environments? | **Yes.** TCP/443 fallback is mandatory. Auto-negotiation: UDP first, TCP after 3s timeout. FEC disabled in TCP mode.                     |
+| 3 | Pluggable stealth profiles?        | **Both.** Compiled-in defaults (Chrome/Firefox/Safari) + runtime override via TOML file. SIGHUP hot-reload.                              |
+| 4 | Client authentication?             | **Pluggable auth backend.** Three methods: static key (default), HMAC-signed tokens, X.509 certificates. Server enables any combination. |
+| 5 | Post-quantum readiness?            | **v1.0.** Hybrid X25519 + ML-KEM-768 (FIPS 203) key exchange. Enabled by default, configurable off.                                      |
+| 6 | Windows support?                   | **v1.0.** WinTUN + IOCP reactor. All major desktop platforms ship in v1.0.                                                               |
+| 7 | Payload compression?               | **v1.0.** Hand-written LZ4 block compression (~400 LOC). Auto mode skips high-entropy payloads.                                          |
+| 8 | DNS-over-HTTPS?                    | **v1.0.** Built-in DoH stub resolver, enabled by default. Hand-written minimal HTTP/1.1 POST client.                                     |
