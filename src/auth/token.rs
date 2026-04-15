@@ -1,3 +1,4 @@
+use crate::auth::common_crypto::{decode_hex_32, encode_hex, sign_payload};
 use crate::auth::{AuthBackend, AuthError, AuthIdentity, AuthInput};
 use crate::util::AuthMethod;
 use subtle::ConstantTimeEq;
@@ -128,7 +129,7 @@ fn parse_token(token: &str) -> Result<(TokenClaims, [u8; 32], String), AuthError
                 unsigned_parts.push(format!("{key}={value}"));
             }
             "sig" => {
-                signature = Some(decode_hex(value)?);
+                signature = Some(decode_hex_32(value)?);
             }
             _ => return Err(AuthError::Rejected),
         }
@@ -143,38 +144,6 @@ fn parse_token(token: &str) -> Result<(TokenClaims, [u8; 32], String), AuthError
     let signature = signature.ok_or(AuthError::Rejected)?;
     let unsigned_payload = unsigned_parts.join(";");
     Ok((claims, signature, unsigned_payload))
-}
-
-fn sign_payload(signing_key: &[u8; 32], payload: &[u8]) -> [u8; 32] {
-    *blake3::keyed_hash(signing_key, payload).as_bytes()
-}
-
-fn encode_hex(bytes: &[u8]) -> String {
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
-}
-
-fn decode_hex(value: &str) -> Result<[u8; 32], AuthError> {
-    if value.len() != 64 {
-        return Err(AuthError::Rejected);
-    }
-
-    let mut output = [0_u8; 32];
-    for (index, chunk) in value.as_bytes().chunks_exact(2).enumerate() {
-        let high = from_hex(chunk[0])?;
-        let low = from_hex(chunk[1])?;
-        output[index] = (high << 4) | low;
-    }
-
-    Ok(output)
-}
-
-fn from_hex(byte: u8) -> Result<u8, AuthError> {
-    match byte {
-        b'0'..=b'9' => Ok(byte - b'0'),
-        b'a'..=b'f' => Ok(byte - b'a' + 10),
-        b'A'..=b'F' => Ok(byte - b'A' + 10),
-        _ => Err(AuthError::Rejected),
-    }
 }
 
 #[cfg(test)]
