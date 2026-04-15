@@ -9,6 +9,7 @@ use crate::transport::tcp_tls::TcpTlsTransport;
 use crate::transport::udp_tls::UdpTlsTransport;
 use crate::transport::{Frame, FrameError, FrameType, TransportError, TransportStrategy};
 use crate::util::ConnectionState;
+use core::time::Duration;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TransportEngine {
@@ -29,6 +30,18 @@ pub struct TransportEngine {
 }
 
 impl TransportEngine {
+    fn connect_kind(
+        &mut self,
+        kind: TransportKind,
+        timeout: Duration,
+    ) -> Result<AttemptOutcome, TransportError> {
+        match kind {
+            TransportKind::UdpTls => self.udp.connect(timeout),
+            TransportKind::TcpTls => self.tcp.connect(timeout),
+            TransportKind::QuicMask => self.quic.connect(timeout),
+        }
+    }
+
     pub fn new(negotiator: ModeNegotiator, udp: UdpTlsTransport, tcp: TcpTlsTransport) -> Self {
         let active_kind = negotiator.initial_kind();
         Self {
@@ -126,41 +139,31 @@ impl TransportEngine {
     pub fn establish(&mut self) -> Result<(), TransportError> {
         self.state = ConnectionState::Handshaking;
         let timeout = self.negotiator.fallback_timeout();
+        let mut attempt_kind = self.active_kind;
 
-        match self.active_kind {
-            TransportKind::UdpTls => match self.udp.connect(timeout)? {
-                AttemptOutcome::Connected => {}
+        loop {
+            match self.connect_kind(attempt_kind, timeout)? {
+                AttemptOutcome::Connected => {
+                    self.active_kind = attempt_kind;
+                    self.state = ConnectionState::Established;
+                    return Ok(());
+                }
                 outcome => {
-                    if let Some(next_kind) = self.negotiator.next_kind(self.active_kind, outcome) {
-                        self.active_kind = next_kind;
-                        self.fallback_count = self.fallback_count.saturating_add(1);
-                        let tcp_outcome = self.tcp.connect(timeout)?;
-                        if tcp_outcome != AttemptOutcome::Connected {
-                            self.state = ConnectionState::Closed;
-                            return Err(TransportError::Timeout);
-                        }
-                    } else {
+                    let Some(next_kind) = self.negotiator.next_kind(attempt_kind, outcome) else {
+                        self.state = ConnectionState::Closed;
+                        return Err(TransportError::Timeout);
+                    };
+                    if next_kind == attempt_kind {
                         self.state = ConnectionState::Closed;
                         return Err(TransportError::Timeout);
                     }
-                }
-            },
-            TransportKind::TcpTls => {
-                if self.tcp.connect(timeout)? != AttemptOutcome::Connected {
-                    self.state = ConnectionState::Closed;
-                    return Err(TransportError::Timeout);
-                }
-            }
-            TransportKind::QuicMask => {
-                if self.quic.connect(timeout)? != AttemptOutcome::Connected {
-                    self.state = ConnectionState::Closed;
-                    return Err(TransportError::Timeout);
+
+                    attempt_kind = next_kind;
+                    self.active_kind = next_kind;
+                    self.fallback_count = self.fallback_count.saturating_add(1);
                 }
             }
         }
-
-        self.state = ConnectionState::Established;
-        Ok(())
     }
 
     pub fn send_payload(&mut self, payload: Vec<u8>) -> Result<u64, TransportError> {
@@ -219,6 +222,35 @@ mod tests {
         engine.establish().expect("auto fallback establish");
 
         assert_eq!(ConnectionState::Established, engine.state());
+        assert_eq!(TransportKind::TcpTls, engine.active_kind());
+        assert_eq!(1, engine.fallback_count());
+    }
+
+    #[test]
+    fn auto_mode_falls_back_to_tcp_when_udp_fails() {
+        let negotiator = ModeNegotiator::new(TransportMode::Auto, 3);
+        let udp = UdpTlsTransport::new(UdpConnectPolicy::Failure);
+        let tcp = TcpTlsTransport::new(TcpConnectPolicy::Success);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+
+        engine.establish().expect("auto fallback establish");
+
+        assert_eq!(ConnectionState::Established, engine.state());
+        assert_eq!(TransportKind::TcpTls, engine.active_kind());
+        assert_eq!(1, engine.fallback_count());
+    }
+
+    #[test]
+    fn auto_mode_fails_when_fallback_transport_fails() {
+        let negotiator = ModeNegotiator::new(TransportMode::Auto, 3);
+        let udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
+        let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+
+        let result = engine.establish();
+
+        assert!(result.is_err());
+        assert_eq!(ConnectionState::Closed, engine.state());
         assert_eq!(TransportKind::TcpTls, engine.active_kind());
         assert_eq!(1, engine.fallback_count());
     }
