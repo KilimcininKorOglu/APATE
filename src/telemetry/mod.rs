@@ -1,3 +1,9 @@
+pub mod log;
+pub mod metrics;
+
+pub use log::{EventCode, emit_health_probe, format_event};
+pub use metrics::{MetricsRegistry, MetricsSnapshot};
+
 use thiserror::Error;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
