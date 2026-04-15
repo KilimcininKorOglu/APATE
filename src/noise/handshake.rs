@@ -51,6 +51,9 @@ impl HandshakeMachine {
                 if self.session.state != HandshakeState::EphemeralExchanged {
                     return Err(SecurityError::InvalidHandshake);
                 }
+                if !self.seen_server_hello {
+                    return Err(SecurityError::InvalidHandshake);
+                }
                 if signature.ct_eq(&[0_u8; 64]).into() {
                     return Err(SecurityError::ConstantTimeVerificationFailed);
                 }
@@ -125,5 +128,21 @@ mod tests {
         });
 
         assert!(replay_result.is_err());
+    }
+
+    #[test]
+    fn handshake_rejects_auth_proof_before_server_hello() {
+        let mut machine = HandshakeMachine::default();
+        machine
+            .process(HandshakeMessage::ClientHello {
+                ephemeral_public: [1_u8; 32],
+            })
+            .expect("client hello");
+
+        let result = machine.process(HandshakeMessage::AuthProof {
+            signature: [9_u8; 64],
+        });
+
+        assert!(result.is_err());
     }
 }
