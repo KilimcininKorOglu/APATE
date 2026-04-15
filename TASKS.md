@@ -5,14 +5,14 @@
 
 ## Summary
 
-| Metric               | Value |
-|----------------------|-------|
-| Total Tasks          | 28 |
-| Phases               | 4 |
-| Estimated Effort     | 180-240 hours |
-| Foundation Complete  | After Task 5 |
-| MVP Complete         | After Task 21 |
-| Full Release         | After Task 28 |
+| Metric              | Value         |
+|---------------------|---------------|
+| Total Tasks         | 28            |
+| Phases              | 4             |
+| Estimated Effort    | 180-240 hours |
+| Foundation Complete | After Task 5  |
+| MVP Complete        | After Task 21 |
+| Full Release        | After Task 28 |
 
 ---
 
@@ -851,12 +851,12 @@ Run full validation suite and finalize v1.0 release candidate.
 
 ## Milestones
 
-| Milestone   | After Task | What’s Achieved                                      | Demo-able? |
-|-------------|------------|------------------------------------------------------|------------|
-| Foundation  | Task 5     | Buildable project with config/runtime/crypto basics | Yes |
-| Core Tunnel | Task 12    | Baseline tunnel + routing + DNS policy              | Yes |
-| MVP         | Task 21    | Full functional scope including stealth + all auth  | Yes |
-| Release RC  | Task 28    | Hardened, validated, cross-platform release candidate| Yes |
+| Milestone   | After Task | What’s Achieved                                       | Demo-able? |
+|-------------|------------|-------------------------------------------------------|------------|
+| Foundation  | Task 5     | Buildable project with config/runtime/crypto basics   | Yes        |
+| Core Tunnel | Task 12    | Baseline tunnel + routing + DNS policy                | Yes        |
+| MVP         | Task 21    | Full functional scope including stealth + all auth    | Yes        |
+| Release RC  | Task 28    | Hardened, validated, cross-platform release candidate | Yes        |
 
 ## Dependency Graph
 

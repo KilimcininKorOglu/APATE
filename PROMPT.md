@@ -18,18 +18,18 @@ Scope for this build:
 
 ## Tech Stack
 
-| Layer                  | Technology                     | Version |
-|------------------------|--------------------------------|---------|
-| Language               | Rust                           | 1.93.x stable |
-| Build                  | Cargo                          | 1.93.x |
-| Crypto AEAD            | chacha20poly1305, aes-gcm      | 0.10.1, 0.10.3 |
-| KX + signatures        | x25519-dalek, ed25519-dalek, ml-kem | 2.0.1, 2.2.0, 0.2.3 |
-| KDF/hash/security      | blake3, subtle, zeroize        | 1.8.4, 2.6.1, 1.8.2 |
-| RNG                    | rand_core, rand_chacha         | 0.10.0, 0.10.0 |
-| Sys/platform           | libc, windows-sys              | 0.2.184, 0.61.2 |
-| Testing                | cargo test, proptest, criterion| criterion 0.8.2 |
-| Security gates         | cargo-audit, cargo-deny        | latest stable |
-| CI/CD                  | GitHub Actions                 | hosted |
+| Layer             | Technology                          | Version             |
+|-------------------|-------------------------------------|---------------------|
+| Language          | Rust                                | 1.93.x stable       |
+| Build             | Cargo                               | 1.93.x              |
+| Crypto AEAD       | chacha20poly1305, aes-gcm           | 0.10.1, 0.10.3      |
+| KX + signatures   | x25519-dalek, ed25519-dalek, ml-kem | 2.0.1, 2.2.0, 0.2.3 |
+| KDF/hash/security | blake3, subtle, zeroize             | 1.8.4, 2.6.1, 1.8.2 |
+| RNG               | rand_core, rand_chacha              | 0.10.0, 0.10.0      |
+| Sys/platform      | libc, windows-sys                   | 0.2.184, 0.61.2     |
+| Testing           | cargo test, proptest, criterion     | criterion 0.8.2     |
+| Security gates    | cargo-audit, cargo-deny             | latest stable       |
+| CI/CD             | GitHub Actions                      | hosted              |
 
 ## Working Directory Rule
 
@@ -421,19 +421,19 @@ Never leak keys, token material, certificate private data, or internal secret-de
 
 ## Configuration Keys to Support
 
-| Key                            | Required | Default     | Description |
-|--------------------------------|----------|-------------|-------------|
-| `client.server`                | client   | none        | Server endpoint |
-| `transport.mode`               | no       | `auto`      | `auto`/`udp`/`tcp` |
-| `transport.fallback_timeout`   | no       | `3`         | UDP fallback timeout seconds |
-| `stealth.profile`              | no       | `chrome_131`| Built-in profile name |
-| `stealth.profile_path`         | no       | empty       | Optional profile override path |
-| `auth.methods`                 | server   | none        | Enabled auth backends |
-| `crypto.post_quantum`          | no       | `true`      | Hybrid KX toggle |
-| `crypto.rekey_interval_secs`   | no       | `60`        | Time-based rekey trigger |
-| `crypto.rekey_interval_bytes`  | no       | `1073741824`| Byte-based rekey trigger |
-| `routing.mode`                 | no       | `full`      | `full`/`split` |
-| `dns.mode`                     | no       | `doh`       | `doh`/`plain`/fallback |
+| Key                           | Required | Default      | Description                    |
+|-------------------------------|----------|--------------|--------------------------------|
+| `client.server`               | client   | none         | Server endpoint                |
+| `transport.mode`              | no       | `auto`       | `auto`/`udp`/`tcp`             |
+| `transport.fallback_timeout`  | no       | `3`          | UDP fallback timeout seconds   |
+| `stealth.profile`             | no       | `chrome_131` | Built-in profile name          |
+| `stealth.profile_path`        | no       | empty        | Optional profile override path |
+| `auth.methods`                | server   | none         | Enabled auth backends          |
+| `crypto.post_quantum`         | no       | `true`       | Hybrid KX toggle               |
+| `crypto.rekey_interval_secs`  | no       | `60`         | Time-based rekey trigger       |
+| `crypto.rekey_interval_bytes` | no       | `1073741824` | Byte-based rekey trigger       |
+| `routing.mode`                | no       | `full`       | `full`/`split`                 |
+| `dns.mode`                    | no       | `doh`        | `doh`/`plain`/fallback         |
 
 ## Testing Requirements
 

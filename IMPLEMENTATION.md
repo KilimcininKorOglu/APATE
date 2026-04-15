@@ -6,20 +6,20 @@
 
 ### 1.1 Stack Summary
 
-| Layer                  | Technology                                   | Version                    | Rationale |
-|------------------------|----------------------------------------------|----------------------------|-----------|
-| Language               | Rust                                         | stable `1.93.x` baseline  | Meets low-level systems, safety, and performance requirements from SPEC §1.1 and §10 |
-| Toolchain              | Cargo + rustup                               | Cargo `1.93.x`             | Standard Rust build ecosystem with reproducible lockfiles |
-| Runtime model          | Custom async reactor/executor                | Project code               | Required by SPEC §11.1 dependency constraint and latency goals in SPEC §10.1 |
-| Crypto AEAD            | `chacha20poly1305`, `aes-gcm`                | `0.10.1`, `0.10.3`         | Stable audited crates aligned with curated-dependency philosophy |
-| Key exchange/signature | `x25519-dalek`, `ed25519-dalek`, `ml-kem`    | `2.0.1`, `2.2.0`, `0.2.3`  | Required by hybrid auth/key model in SPEC §3.1 and §8.1 |
-| KDF/hash               | `blake3`, `subtle`, `zeroize`                | `1.8.4`, `2.6.1`, `1.8.2`  | Fast key derivation + constant-time + key erasure semantics |
-| Platform abstraction   | `libc`, `windows-sys`                        | `0.2.184`, `0.61.2`        | Direct syscall/Winsock access with minimal abstraction |
-| RNG                    | `rand_core`, `rand_chacha`                   | `0.10.0`, `0.10.0`         | Deterministic and secure random generation split |
-| Testing/bench          | `cargo test`, `proptest`, `criterion`        | latest stable (`0.8.2` for criterion) | Needed for correctness and performance verification in SPEC §10 |
-| Linting/format         | `clippy`, `rustfmt`                          | Rust toolchain bundled     | Enforces consistency and catches correctness issues |
-| CI/CD                  | GitHub Actions                               | hosted                     | Matches repository hosting workflow and easy multi-target matrix |
-| Container              | Docker (optional deploy artifact)            | current stable             | Optional packaging for server deployments from SPEC §9.2 |
+| Layer                  | Technology                                | Version                               | Rationale                                                                            |
+|------------------------|-------------------------------------------|---------------------------------------|--------------------------------------------------------------------------------------|
+| Language               | Rust                                      | stable `1.93.x` baseline              | Meets low-level systems, safety, and performance requirements from SPEC §1.1 and §10 |
+| Toolchain              | Cargo + rustup                            | Cargo `1.93.x`                        | Standard Rust build ecosystem with reproducible lockfiles                            |
+| Runtime model          | Custom async reactor/executor             | Project code                          | Required by SPEC §11.1 dependency constraint and latency goals in SPEC §10.1         |
+| Crypto AEAD            | `chacha20poly1305`, `aes-gcm`             | `0.10.1`, `0.10.3`                    | Stable audited crates aligned with curated-dependency philosophy                     |
+| Key exchange/signature | `x25519-dalek`, `ed25519-dalek`, `ml-kem` | `2.0.1`, `2.2.0`, `0.2.3`             | Required by hybrid auth/key model in SPEC §3.1 and §8.1                              |
+| KDF/hash               | `blake3`, `subtle`, `zeroize`             | `1.8.4`, `2.6.1`, `1.8.2`             | Fast key derivation + constant-time + key erasure semantics                          |
+| Platform abstraction   | `libc`, `windows-sys`                     | `0.2.184`, `0.61.2`                   | Direct syscall/Winsock access with minimal abstraction                               |
+| RNG                    | `rand_core`, `rand_chacha`                | `0.10.0`, `0.10.0`                    | Deterministic and secure random generation split                                     |
+| Testing/bench          | `cargo test`, `proptest`, `criterion`     | latest stable (`0.8.2` for criterion) | Needed for correctness and performance verification in SPEC §10                      |
+| Linting/format         | `clippy`, `rustfmt`                       | Rust toolchain bundled                | Enforces consistency and catches correctness issues                                  |
+| CI/CD                  | GitHub Actions                            | hosted                                | Matches repository hosting workflow and easy multi-target matrix                     |
+| Container              | Docker (optional deploy artifact)         | current stable                        | Optional packaging for server deployments from SPEC §9.2                             |
 
 ### 1.2 Key Technical Decisions
 
@@ -85,20 +85,20 @@
 
 ### 1.3 Dependency Inventory
 
-| Package             | Purpose                                   | License              | Justification |
-|---------------------|-------------------------------------------|----------------------|---------------|
-| chacha20poly1305    | ChaCha20-Poly1305 AEAD                    | MIT OR Apache-2.0    | Audited AEAD for non-AES hardware paths |
-| aes-gcm             | AES-256-GCM AEAD                          | MIT OR Apache-2.0    | Hardware-accelerated AEAD path |
-| x25519-dalek        | X25519 key agreement                      | BSD-3-Clause         | Mature constant-time ECDH |
-| ed25519-dalek       | Ed25519 signatures                        | BSD-3-Clause         | Strong signature ecosystem fit |
-| ml-kem              | Post-quantum KEM (ML-KEM-768)             | MIT OR Apache-2.0    | Hybrid PQ requirement in SPEC §8 |
-| blake3              | Fast hash/KDF primitive base              | CC0-1.0 OR Apache-2.0| High-throughput key derivation base |
-| rand_core           | RNG traits and OS entropy adapters        | MIT OR Apache-2.0    | Minimal secure randomness interface |
-| rand_chacha         | ChaCha-based deterministic DRBG           | MIT OR Apache-2.0    | Controlled randomness streams |
-| zeroize             | Sensitive memory zeroization              | MIT OR Apache-2.0    | Key material lifecycle hardening |
-| subtle              | Constant-time utilities                   | MIT OR Apache-2.0    | Side-channel resistant comparisons |
-| libc                | Portable syscall bindings                 | MIT OR Apache-2.0    | Required for thin platform integration |
-| windows-sys         | Windows system APIs (conditional target)  | MIT OR Apache-2.0    | IOCP and networking support for Windows |
+| Package          | Purpose                                  | License               | Justification                           |
+|------------------|------------------------------------------|-----------------------|-----------------------------------------|
+| chacha20poly1305 | ChaCha20-Poly1305 AEAD                   | MIT OR Apache-2.0     | Audited AEAD for non-AES hardware paths |
+| aes-gcm          | AES-256-GCM AEAD                         | MIT OR Apache-2.0     | Hardware-accelerated AEAD path          |
+| x25519-dalek     | X25519 key agreement                     | BSD-3-Clause          | Mature constant-time ECDH               |
+| ed25519-dalek    | Ed25519 signatures                       | BSD-3-Clause          | Strong signature ecosystem fit          |
+| ml-kem           | Post-quantum KEM (ML-KEM-768)            | MIT OR Apache-2.0     | Hybrid PQ requirement in SPEC §8        |
+| blake3           | Fast hash/KDF primitive base             | CC0-1.0 OR Apache-2.0 | High-throughput key derivation base     |
+| rand_core        | RNG traits and OS entropy adapters       | MIT OR Apache-2.0     | Minimal secure randomness interface     |
+| rand_chacha      | ChaCha-based deterministic DRBG          | MIT OR Apache-2.0     | Controlled randomness streams           |
+| zeroize          | Sensitive memory zeroization             | MIT OR Apache-2.0     | Key material lifecycle hardening        |
+| subtle           | Constant-time utilities                  | MIT OR Apache-2.0     | Side-channel resistant comparisons      |
+| libc             | Portable syscall bindings                | MIT OR Apache-2.0     | Required for thin platform integration  |
+| windows-sys      | Windows system APIs (conditional target) | MIT OR Apache-2.0     | IOCP and networking support for Windows |
 
 Dependency policy: direct deps ≤ 15, transitive deps ≤ 50, no tokio/hyper/runtime frameworks, mandatory `cargo audit` + `cargo deny`.
 
@@ -478,22 +478,22 @@ pub trait SessionRepository {
 
 ### 5.1 Control Surface Structure (CLI)
 
-| Command / Signal              | Module Handler             | Description |
-|------------------------------|----------------------------|-------------|
-| `apate-client --config ...`  | `cli::commands::runClient` | Boot client runtime and tunnel loop |
-| `apate-server --config ...`  | `cli::commands::runServer` | Boot server listeners and auth stack |
-| Runtime reload signal        | `config::ConfigLoader`     | Reload profile/config subset safely |
+| Command / Signal            | Module Handler             | Description                          |
+|-----------------------------|----------------------------|--------------------------------------|
+| `apate-client --config ...` | `cli::commands::runClient` | Boot client runtime and tunnel loop  |
+| `apate-server --config ...` | `cli::commands::runServer` | Boot server listeners and auth stack |
+| Runtime reload signal       | `config::ConfigLoader`     | Reload profile/config subset safely  |
 
 ### 5.2 Protocol Message Contract
 
-| Message Type | Handler Module                 | Purpose |
-|--------------|--------------------------------|---------|
-| HANDSHAKE    | `noise::handshake`             | Session key establishment |
-| DATA         | `transport::connection`        | Tunnel payload delivery |
-| ACK          | `transport::ack`               | Loss tracking and recovery |
-| REKEY        | `noise::state`                 | Key rotation synchronization |
-| MIGRATE      | `transport::migration`         | Endpoint update without reconnect |
-| CLOSE        | `transport::connection`        | Graceful termination |
+| Message Type | Handler Module          | Purpose                           |
+|--------------|-------------------------|-----------------------------------|
+| HANDSHAKE    | `noise::handshake`      | Session key establishment         |
+| DATA         | `transport::connection` | Tunnel payload delivery           |
+| ACK          | `transport::ack`        | Loss tracking and recovery        |
+| REKEY        | `noise::state`          | Key rotation synchronization      |
+| MIGRATE      | `transport::migration`  | Endpoint update without reconnect |
+| CLOSE        | `transport::connection` | Graceful termination              |
 
 ### 5.3 Validation Approach
 
@@ -515,14 +515,14 @@ pub trait SessionRepository {
 
 ### 6.1 Error Classification
 
-| Category        | Example                         | Action |
-|----------------|---------------------------------|--------|
-| ConfigError     | Invalid profile value           | Fail startup/reload with clear code |
-| AuthError       | Invalid token/certificate       | Reject connection, audit log |
-| FrameError      | Malformed frame length/type     | Drop packet, increment abuse metric |
-| TransportError  | Send/receive path failure       | Retry/fallback/close by policy |
-| SecurityError   | Nonce reuse or invariant breach | Immediate session teardown |
-| RuntimeError    | Reactor backend failure         | Controlled shutdown |
+| Category       | Example                         | Action                              |
+|----------------|---------------------------------|-------------------------------------|
+| ConfigError    | Invalid profile value           | Fail startup/reload with clear code |
+| AuthError      | Invalid token/certificate       | Reject connection, audit log        |
+| FrameError     | Malformed frame length/type     | Drop packet, increment abuse metric |
+| TransportError | Send/receive path failure       | Retry/fallback/close by policy      |
+| SecurityError  | Nonce reuse or invariant breach | Immediate session teardown          |
+| RuntimeError   | Reactor backend failure         | Controlled shutdown                 |
 
 ### 6.2 Error Propagation
 
@@ -538,29 +538,29 @@ Priority: built-in defaults → config file → CLI overrides.
 
 ### 7.2 Config Schema
 
-| Key                               | Type    | Default  | Description |
-|-----------------------------------|---------|----------|-------------|
-| `client.server`                   | string  | none     | Server endpoint for client mode |
-| `transport.mode`                  | enum    | `auto`   | Mode strategy (`auto`,`udp`,`tcp`) |
-| `stealth.profile`                 | string  | `chrome_131` | Built-in profile selection |
-| `stealth.profile_path`            | string  | empty    | Optional custom profile path |
-| `auth.methods`                    | array   | required | Enabled backend list on server |
-| `crypto.post_quantum`             | bool    | `true`   | Hybrid KX enablement |
-| `crypto.rekey_interval_secs`      | integer | `60`     | Time-based rekey trigger |
-| `crypto.rekey_interval_bytes`     | integer | `1073741824` | Byte-based rekey trigger |
-| `routing.mode`                    | enum    | `full`   | Full or split tunnel |
-| `dns.mode`                        | enum    | `doh`    | DNS policy mode |
+| Key                           | Type    | Default      | Description                        |
+|-------------------------------|---------|--------------|------------------------------------|
+| `client.server`               | string  | none         | Server endpoint for client mode    |
+| `transport.mode`              | enum    | `auto`       | Mode strategy (`auto`,`udp`,`tcp`) |
+| `stealth.profile`             | string  | `chrome_131` | Built-in profile selection         |
+| `stealth.profile_path`        | string  | empty        | Optional custom profile path       |
+| `auth.methods`                | array   | required     | Enabled backend list on server     |
+| `crypto.post_quantum`         | bool    | `true`       | Hybrid KX enablement               |
+| `crypto.rekey_interval_secs`  | integer | `60`         | Time-based rekey trigger           |
+| `crypto.rekey_interval_bytes` | integer | `1073741824` | Byte-based rekey trigger           |
+| `routing.mode`                | enum    | `full`       | Full or split tunnel               |
+| `dns.mode`                    | enum    | `doh`        | DNS policy mode                    |
 
 ## 8. Testing Strategy
 
 ### 8.1 Test Pyramid
 
-| Level        | Tooling                       | Scope |
-|--------------|-------------------------------|-------|
-| Unit         | `cargo test`, `proptest`      | Frame codec, state transitions, parser validation |
-| Integration  | `cargo test --test ...`       | Client/server handshake, fallback, routing, auth flow |
-| Fuzz         | `cargo fuzz`                  | Frame parser, config parser, handshake parser |
-| Benchmark    | `criterion`                   | Packet path overhead, crypto wrapper throughput |
+| Level       | Tooling                  | Scope                                                 |
+|-------------|--------------------------|-------------------------------------------------------|
+| Unit        | `cargo test`, `proptest` | Frame codec, state transitions, parser validation     |
+| Integration | `cargo test --test ...`  | Client/server handshake, fallback, routing, auth flow |
+| Fuzz        | `cargo fuzz`             | Frame parser, config parser, handshake parser         |
+| Benchmark   | `criterion`              | Packet path overhead, crypto wrapper throughput       |
 
 ### 8.2 Test Patterns
 
