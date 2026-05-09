@@ -189,7 +189,7 @@ impl TransportEngine {
     }
 
     fn run_handshake(&mut self) -> Result<(), TransportError> {
-        let Some(ref mut machine) = self.handshake else {
+        let Some(mut machine) = self.handshake.take() else {
             return Ok(());
         };
 
@@ -200,6 +200,38 @@ impl TransportEngine {
             })
             .map_err(|_| TransportError::NotConnected)?;
 
+        let hello_frame = Frame {
+            frame_type: FrameType::Handshake,
+            sequence: 0,
+            payload: local_pub.to_vec(),
+        };
+        self.send_frame(hello_frame)?;
+
+        if let Some(server_frame) = self.recv_frame()?
+            && server_frame.frame_type == FrameType::Handshake
+            && server_frame.payload.len() == 32
+        {
+            let mut server_pub = [0u8; 32];
+            server_pub.copy_from_slice(&server_frame.payload);
+            machine
+                .process(HandshakeMessage::ServerHello {
+                    ephemeral_public: server_pub,
+                })
+                .map_err(|_| TransportError::NotConnected)?;
+        }
+
+        if let Some(auth_frame) = self.recv_frame()?
+            && auth_frame.frame_type == FrameType::Handshake
+            && auth_frame.payload.len() == 64
+        {
+            let mut signature = [0u8; 64];
+            signature.copy_from_slice(&auth_frame.payload);
+            machine
+                .process(HandshakeMessage::AuthProof { signature })
+                .map_err(|_| TransportError::NotConnected)?;
+        }
+
+        self.handshake = Some(machine);
         Ok(())
     }
 
