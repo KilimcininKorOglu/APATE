@@ -12,7 +12,7 @@ protocol daemon.
 
 Prerequisites:
 
-- Rust toolchain 1.80 or later (`rustup toolchain install stable`)
+- Rust toolchain 1.85 or later (`rustup toolchain install stable`)
 - A C linker (`cc`) for linking against `libc` on POSIX targets
 - On Windows: the MSVC toolchain or a MinGW cross-compiler
 
@@ -90,19 +90,21 @@ Only the keys listed in the table below are accepted. Any unknown key causes
 
 ### 2.2 Configuration Reference
 
-| Key                           | Required   | Default       | Valid Values                              | Description                                                                                       |
-|-------------------------------|------------|---------------|-------------------------------------------|---------------------------------------------------------------------------------------------------|
-| `client.server`               | Client     | (none)        | `<host>:<port>` string                    | Server endpoint the client connects to. Required in client mode; validated to be non-empty.        |
-| `transport.mode`              | No         | `auto`        | `auto`, `udp`, `tcp`, `quic_mask`         | Transport selection strategy. `auto` attempts UDP-TLS first, falls back to TCP-TLS on timeout or failure. |
-| `transport.fallback_timeout`  | No         | `3`           | Integer >= 1                              | Seconds to wait before the `auto` mode triggers a transport fallback. `0` is rejected as invalid. |
-| `stealth.profile`             | No         | `chrome_131`  | `chrome_131`, `firefox_130`, `safari_18`  | Built-in stealth profile controlling ALPN, packet size range, and inter-packet jitter.             |
-| `stealth.profile_path`        | No         | (empty)       | Filesystem path string                    | Path to a custom profile file that overrides the built-in profile. Takes priority when set.        |
-| `auth.methods`                | Server     | (none)        | `["static_key"]`, `["token"]`, `["certificate"]`, or combinations | Ordered list of authentication backends enabled on the server. Required in server mode. |
-| `crypto.post_quantum`         | No         | `true`        | `true`, `false`                           | When `true`, the handshake uses hybrid X25519 + ML-KEM key exchange. When `false`, X25519 only.   |
-| `crypto.rekey_interval_secs`  | No         | `60`          | u32 >= 1                                  | Time-based rekey trigger: initiate REKEY after this many seconds since last key rotation.          |
-| `crypto.rekey_interval_bytes` | No         | `1073741824`  | u64 >= 1                                  | Byte-based rekey trigger: initiate REKEY after this many bytes of data transmitted under the current key. |
-| `routing.mode`                | No         | `full`        | `full`, `split`                           | `full` sends all IP traffic through the tunnel. `split` uses the route table; only CIDRs added to the route table are tunneled. |
-| `dns.mode`                    | No         | `doh`         | `doh`, `plain`, `fallback`                | DNS resolution strategy. `doh` sends all DNS over HTTPS through the tunnel. `plain` uses the system resolver. `fallback` uses DoH with a system-resolver fallback. |
+| Key                                | Required | Default          | Valid Values                                                      | Description                                                                                            |
+|------------------------------------|----------|------------------|-------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------|
+| `client.server`                    | Client   | (none)           | `<host>:<port>` string                                            | Server endpoint the client connects to. Required in client mode; validated to be non-empty.             |
+| `server.listen`                    | Server   | `0.0.0.0:443`    | `<bind_addr>:<port>` string                                       | Address and port the server listens on. Parsed as `SocketAddr` at startup.                             |
+| `transport.mode`                   | No       | `auto`           | `auto`, `udp`, `tcp`, `quic_mask`                                 | Transport selection strategy. `auto` attempts UDP-TLS first, falls back to TCP-TLS on timeout.         |
+| `transport.fallback_timeout`       | No       | `3`              | Integer >= 1                                                      | Seconds to wait before the `auto` mode triggers a transport fallback. `0` is rejected as invalid.      |
+| `stealth.profile`                  | No       | `chrome_131`     | `chrome_131`, `firefox_130`, `safari_18`                          | Built-in stealth profile controlling ALPN, packet sizes, jitter, and traffic shaping.                  |
+| `stealth.profile_path`             | No       | (empty)          | Filesystem path string                                            | Path to a custom profile file that overrides the built-in profile. Takes priority when set.             |
+| `stealth.facade_on_auth_failure`   | No       | `true`           | `true`, `false`                                                   | When `true`, serves fake HTTP responses to failed auth attempts instead of closing the connection.     |
+| `auth.methods`                     | Server   | (none)           | `["static_key"]`, `["token"]`, `["certificate"]`, or combinations | Ordered list of authentication backends. Required in server mode.                                      |
+| `crypto.post_quantum`              | No       | `true`           | `true`, `false`                                                   | When `true`, the handshake uses hybrid X25519 + ML-KEM key exchange. When `false`, X25519 only.        |
+| `crypto.rekey_interval_secs`       | No       | `60`             | u32 >= 1                                                          | Time-based rekey trigger: initiate REKEY after this many seconds since last key rotation.               |
+| `crypto.rekey_interval_bytes`      | No       | `1073741824`     | u64 >= 1                                                          | Byte-based rekey trigger: initiate REKEY after this many bytes transmitted under the current key.      |
+| `routing.mode`                     | No       | `full`           | `full`, `split`                                                   | `full` sends all traffic through the tunnel. `split` routes only configured CIDRs through the tunnel.  |
+| `dns.mode`                         | No       | `doh`            | `doh`, `plain`, `fallback`                                        | DNS resolution strategy. `doh` sends DNS over HTTPS through the tunnel. `plain` uses system resolver.  |
 
 ### 2.3 Authentication Method List Syntax
 
@@ -210,34 +212,8 @@ event code=startup detail=mode=server auth=[static_key]
 
 ### 3.4 Running as a System Service
 
-**Linux (systemd):**
-
-Create `/etc/systemd/system/apate.service`:
-
-```ini
-[Unit]
-Description=Apate stealth VPN
-After=network.target
-
-[Service]
-ExecStart=/usr/local/bin/apate client --config /etc/apate/apate.conf
-Restart=on-failure
-RestartSec=5s
-AmbientCapabilities=CAP_NET_ADMIN
-NoNewPrivileges=true
-ProtectSystem=strict
-ProtectHome=true
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Enable and start:
-
-```sh
-systemctl daemon-reload
-systemctl enable --now apate
-```
+See Section 8.5 (Server) and Section 9.6 (Client) for complete systemd
+and launchd service configurations.
 
 ---
 
@@ -490,3 +466,365 @@ Common failures:
 | `[advisories]`       | `crate X is affected by advisory RUSTSEC-YYYY-NNNN` | Update the affected crate or add an explicit ignore with justification in `deny.toml`. |
 | `[licenses]`         | `crate X has license GPL-2.0`                      | Replace the crate with a permissively-licensed alternative. |
 | `[bans]`             | `duplicate crate X versions`                       | Unify the version by adding a `[patch]` override in `Cargo.toml`. |
+
+---
+
+## 8. Server Deployment Guide
+
+This section walks through deploying Apate on a real VPS or dedicated server.
+
+### 8.1 Prerequisites
+
+- A Linux VPS (Ubuntu 22.04+ / Debian 12+ recommended) with a public IP
+- Port 443 open in the hosting provider's firewall
+- Root or sudo access
+- Rust toolchain installed (or pre-compiled binary)
+
+### 8.2 Build on the Server
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
+git clone https://github.com/KilimcininKorOglu/APATE.git
+cd APATE
+cargo +stable build --release
+```
+
+Or build locally and copy the binary:
+
+```sh
+# On your local machine (cross-compile for Linux)
+cargo +stable build --release --target x86_64-unknown-linux-gnu
+
+# Copy to server
+scp target/x86_64-unknown-linux-gnu/release/apate root@your-server:/usr/local/bin/
+```
+
+### 8.3 Install and Configure
+
+```sh
+# Install binary
+install -m 0755 target/release/apate /usr/local/bin/apate
+
+# Grant TUN capability (avoids running as root)
+setcap cap_net_admin=ep /usr/local/bin/apate
+
+# Create config directory
+mkdir -p /etc/apate
+
+# Generate a keypair
+apate gen-key
+# Output: public_key=<64-hex-chars>
+# Save the public key — you will need it on the client side
+```
+
+Create the server config file:
+
+```sh
+cat > /etc/apate/apate.conf << 'EOF'
+server.listen = "0.0.0.0:443"
+transport.mode = "quic_mask"
+auth.methods = ["static_key"]
+stealth.profile = "chrome_131"
+stealth.facade_on_auth_failure = true
+crypto.post_quantum = true
+crypto.rekey_interval_secs = 60
+EOF
+```
+
+An example config is also available at `examples/server.conf`.
+
+### 8.4 Firewall Configuration
+
+```sh
+# UFW (Ubuntu/Debian)
+ufw allow 443/udp    # QUIC mode
+ufw allow 443/tcp    # TCP fallback / probe deflection
+ufw enable
+
+# Or iptables
+iptables -A INPUT -p udp --dport 443 -j ACCEPT
+iptables -A INPUT -p tcp --dport 443 -j ACCEPT
+```
+
+For QUIC mode, UDP port 443 must be open. For TCP fallback and probe
+deflection, TCP port 443 must also be open.
+
+### 8.5 Create Systemd Service
+
+```sh
+cat > /etc/systemd/system/apate.service << 'EOF'
+[Unit]
+Description=Apate Stealth VPN Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/apate server --config /etc/apate/apate.conf
+Restart=on-failure
+RestartSec=5s
+AmbientCapabilities=CAP_NET_ADMIN
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/dev/net/tun
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now apate
+```
+
+### 8.6 Verify Server is Running
+
+```sh
+# Check service status
+systemctl status apate
+
+# Check logs
+journalctl -u apate -f
+
+# Expected startup log:
+# event code=startup detail=mode=server-quic listen=0.0.0.0:443 backend=epoll
+```
+
+### 8.7 Transport Mode Selection
+
+| Scenario                                      | Recommended Mode | Config Value   |
+|-----------------------------------------------|------------------|----------------|
+| Standard deployment (best stealth)            | QUIC             | `quic_mask`    |
+| UDP blocked by ISP/firewall                   | TCP only         | `tcp`          |
+| Unknown network conditions                    | Automatic        | `auto`         |
+| Maximum compatibility                         | TCP only         | `tcp`          |
+
+QUIC mode (`quic_mask`) provides the strongest DPI evasion because the
+traffic uses real QUIC protocol framing (RFC 9000) with AEAD encryption
+and header protection. The server automatically generates self-signed
+certificates and rotates them every 1-2 hours.
+
+---
+
+## 9. Client Setup Guide
+
+### 9.1 Install Client Binary
+
+Build or download the binary for your platform:
+
+```sh
+# macOS (Apple Silicon)
+cargo +stable build --release --target aarch64-apple-darwin
+
+# Linux
+cargo +stable build --release --target x86_64-unknown-linux-gnu
+
+# Windows
+cargo +stable build --release --target x86_64-pc-windows-msvc
+```
+
+Install:
+
+```sh
+# Linux/macOS
+install -m 0755 target/release/apate /usr/local/bin/apate
+setcap cap_net_admin=ep /usr/local/bin/apate   # Linux only
+
+# Windows: copy apate.exe to a PATH directory
+# Windows: install WinTUN driver from https://www.wintun.net/
+```
+
+### 9.2 Create Client Config
+
+```sh
+mkdir -p /etc/apate
+
+cat > /etc/apate/apate.conf << 'EOF'
+client.server = "203.0.113.10:443"
+transport.mode = "auto"
+auth.methods = ["static_key"]
+stealth.profile = "chrome_131"
+routing.mode = "full"
+dns.mode = "doh"
+crypto.post_quantum = true
+EOF
+```
+
+Replace `203.0.113.10` with your server's public IP address.
+An example config is also available at `examples/client.conf`.
+
+### 9.3 Transport Mode Matching
+
+The client transport mode must be compatible with the server:
+
+| Server Mode  | Compatible Client Modes      |
+|--------------|------------------------------|
+| `quic_mask`  | `quic_mask`, `auto`          |
+| `auto`       | `auto`, `udp`, `tcp`         |
+| `udp`        | `udp`, `auto`                |
+| `tcp`        | `tcp`, `auto`                |
+
+When the server runs in `quic_mask` mode and the client uses `auto`, the
+client will attempt UDP-TLS and TCP-TLS first (which will fail), then
+fall back to QUIC.
+
+### 9.4 Connect to Server
+
+```sh
+# With default config path
+sudo apate client
+
+# With custom config path
+sudo apate client --config /path/to/client.conf
+
+# With verbose logging
+sudo apate client --config /path/to/client.conf --verbose
+```
+
+Root/sudo is required for TUN device access. Expected output:
+
+```
+event code=startup detail=mode=client server=203.0.113.10:443 transport=auto backend=kqueue
+event code=handshake_success detail=transport=UdpTls endpoint=203.0.113.10:443
+event code=runtime_ready detail=tunnel=utun7 mtu=1400
+```
+
+### 9.5 Verify the Tunnel
+
+```sh
+# Check TUN interface exists
+ip addr show apate0          # Linux
+ifconfig utun7               # macOS
+
+# Test connectivity through the tunnel
+ping -c 3 8.8.8.8
+
+# Verify your public IP has changed
+curl https://ifconfig.me
+```
+
+### 9.6 Running as a System Service (Client)
+
+**Linux:**
+
+```sh
+cat > /etc/systemd/system/apate-client.service << 'EOF'
+[Unit]
+Description=Apate Stealth VPN Client
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/apate client --config /etc/apate/apate.conf
+Restart=on-failure
+RestartSec=10s
+AmbientCapabilities=CAP_NET_ADMIN
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable --now apate-client
+```
+
+**macOS (launchd):**
+
+```sh
+cat > /Library/LaunchDaemons/com.apate.client.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.apate.client</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/apate</string>
+        <string>client</string>
+        <string>--config</string>
+        <string>/etc/apate/apate.conf</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+launchctl load /Library/LaunchDaemons/com.apate.client.plist
+```
+
+---
+
+## 10. Key Exchange Workflow
+
+Apate uses pre-shared static keys for authentication. The key exchange
+must happen out-of-band (not through the VPN itself).
+
+### 10.1 Generate Keys
+
+On both the server and the client:
+
+```sh
+apate gen-key
+# Output: public_key=3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29
+```
+
+The `gen-key` command generates a random 32-byte secret key using OS
+entropy, derives the X25519 public key, and prints only the public key.
+The secret key is not persisted or printed.
+
+### 10.2 Exchange Public Keys
+
+1. Generate a keypair on the **server**: `apate gen-key` -> note the public key
+2. Generate a keypair on the **client**: `apate gen-key` -> note the public key
+3. Share public keys through a secure channel (SSH, Signal, in person)
+4. Configure each side with the peer's public key
+
+### 10.3 Security Considerations
+
+- Never transmit private keys over the network
+- Rotate static keys at least every 90 days
+- Use `certificate` auth method for production deployments where key
+  rotation needs to be automated
+- The `token` auth method supports time-limited access with expiration
+
+---
+
+## 11. DPI Evasion Features
+
+Apate includes several layers of DPI evasion that operate automatically
+once configured via the stealth profile.
+
+### 11.1 Automatic Features (No Configuration Needed)
+
+| Feature                  | Description                                                         |
+|--------------------------|---------------------------------------------------------------------|
+| Traffic Shaping          | Markov chain models browser traffic patterns (packet sizes, timing) |
+| Chaff Traffic            | Random packets during idle periods prevent silence-burst detection   |
+| Decoy Streams            | Fake HTTP/3 streams multiplexed alongside real VPN data (QUIC mode) |
+| Session Rotation         | Connection teardown/rebuild every 15-45 minutes with fresh IDs      |
+| Certificate Rotation     | Server generates new TLS certificates every 1-2 hours (QUIC mode)  |
+| Asymmetric Padding       | Download traffic padded more than upload to match browser ratios    |
+| Probe Deflection         | Fake HTTP responses served to unauthenticated connections           |
+
+### 11.2 Configurable Options
+
+| Config Key                         | Effect                                                  |
+|------------------------------------|---------------------------------------------------------|
+| `stealth.profile`                  | Controls TLS fingerprint and traffic shaping profile    |
+| `stealth.facade_on_auth_failure`   | Enables/disables probe deflection HTTP responses        |
+| `stealth.profile_path`             | Custom stealth profile for fine-tuned packet parameters  |
+
+### 11.3 Profile Recommendations
+
+| Use Case                                  | Profile        | Transport    |
+|--------------------------------------------|---------------|-------------|
+| Countries with advanced DPI (China, Iran)  | `chrome_131`  | `quic_mask` |
+| Corporate networks with SSL inspection    | `firefox_130` | `tcp`       |
+| General purpose                           | `chrome_131`  | `auto`      |

@@ -70,6 +70,15 @@ pub fn parse_config(input: &str) -> Result<AppConfig, ConfigError> {
         };
     }
 
+    if let Some(value) = kv.get("stealth.facade_on_auth_failure") {
+        config.stealth.facade_on_auth_failure =
+            parse_string_value(value)
+                .parse::<bool>()
+                .map_err(|_error| ConfigError::InvalidValue {
+                    key: String::from("stealth.facade_on_auth_failure"),
+                })?;
+    }
+
     if let Some(value) = kv.get("auth.methods") {
         config.auth.methods = parse_auth_methods(value)?;
     }
@@ -160,6 +169,7 @@ fn is_supported_key(key: &str) -> bool {
             | "transport.fallback_timeout"
             | "stealth.profile"
             | "stealth.profile_path"
+            | "stealth.facade_on_auth_failure"
             | "auth.methods"
             | "crypto.post_quantum"
             | "crypto.rekey_interval_secs"
