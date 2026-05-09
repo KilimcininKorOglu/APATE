@@ -135,6 +135,37 @@ impl TransportEngine {
         Ok(self.key_epoch)
     }
 
+    pub fn reconnect(&mut self) -> Result<(), TransportError> {
+        if self.state != ConnectionState::Established {
+            return Err(TransportError::NotConnected);
+        }
+
+        self.key_epoch = self.key_epoch.saturating_add(1);
+        let seed = os_seed();
+        self.session_id.copy_from_slice(&seed[..16]);
+        self.sequence = 0;
+
+        if self.active_kind == TransportKind::QuicMask {
+            self.state = ConnectionState::Handshaking;
+            drop(self.quic.take_connection());
+            let timeout = self.negotiator.fallback_timeout();
+            match self.quic.connect(timeout)? {
+                AttemptOutcome::Connected => {
+                    self.state = ConnectionState::Established;
+                }
+                _ => {
+                    self.state = ConnectionState::Closed;
+                    return Err(TransportError::Timeout);
+                }
+            }
+        } else {
+            self.state = ConnectionState::Rekeying;
+            self.state = ConnectionState::Established;
+        }
+
+        Ok(())
+    }
+
     pub fn migrate_endpoint(
         &mut self,
         new_endpoint: String,
@@ -272,6 +303,17 @@ impl TransportEngine {
             TransportKind::UdpTls => self.udp.recv(),
             TransportKind::TcpTls => self.tcp.recv(),
             TransportKind::QuicMask => self.quic.recv(),
+        }
+    }
+
+    pub fn send_decoy(&mut self, payload: &[u8]) -> Result<(), TransportError> {
+        if self.state != ConnectionState::Established {
+            return Err(TransportError::NotConnected);
+        }
+        if self.active_kind == TransportKind::QuicMask {
+            self.quic.send_decoy(payload)
+        } else {
+            self.send_payload(payload.to_vec()).map(|_| ())
         }
     }
 }

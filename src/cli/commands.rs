@@ -164,7 +164,7 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
         }
 
         if let Some(decoy) = decoy_gen.should_inject_decoy() {
-            let _ = engine.send_payload(decoy.data);
+            let _ = engine.send_decoy(&decoy.data);
         }
 
         if session_rotator.should_rotate(runtime.timer_wheel.now_ms()) {
@@ -178,7 +178,7 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
                     ),
                 ),
             );
-            let _ = engine.rekey();
+            let _ = engine.reconnect();
             session_rotator.on_rotated(runtime.timer_wheel.now_ms(), 900, 2700);
         }
 
@@ -818,10 +818,7 @@ fn run_server_quic(args: &CliArgs) -> Result<(), String> {
                     "{}",
                     format_event(
                         EventCode::RuntimeReady,
-                        &format!(
-                            "cert-rotate count={}",
-                            cert_rotator.rotation_count() + 1,
-                        ),
+                        &format!("cert-rotate count={}", cert_rotator.rotation_count() + 1,),
                     ),
                 );
             }

@@ -270,8 +270,48 @@ impl QuicTransport {
         }
     }
 
+    pub fn take_connection(&mut self) -> Option<(ConnectionHandle, Connection)> {
+        let fd = self.fd_val();
+        if let Some((_, ref mut conn)) = self.connection {
+            conn.close(
+                Instant::now(),
+                quinn_proto::VarInt::from_u32(0),
+                bytes::Bytes::from_static(b"rotate"),
+            );
+            drain_transmits(fd, conn);
+        }
+        self.stream_id = None;
+        self.connected = false;
+        self.connection.take()
+    }
+
     pub fn queue_inbound(&mut self, data: Vec<u8>) {
         self.inbound.push_back(data);
+    }
+
+    pub fn send_decoy(&mut self, payload: &[u8]) -> Result<(), TransportError> {
+        if !self.connected {
+            return Err(TransportError::NotConnected);
+        }
+
+        let fd = self.fd_val();
+        if let Some((_, ref mut conn)) = self.connection {
+            let decoy_stream = conn
+                .streams()
+                .open(quinn_proto::Dir::Uni)
+                .ok_or(TransportError::NotConnected)?;
+
+            let mut send = conn.send_stream(decoy_stream);
+            let _ = send
+                .write(payload)
+                .map_err(|_| TransportError::NotConnected)?;
+            let _ = send.finish();
+
+            drain_transmits(fd, conn);
+            return Ok(());
+        }
+
+        Ok(())
     }
 }
 
