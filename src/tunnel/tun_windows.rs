@@ -39,7 +39,7 @@ mod wintun {
             use windows_sys::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryA};
 
             let lib = LoadLibraryA(c"wintun.dll".as_ptr() as *const u8);
-            if lib == 0 {
+            if lib.is_null() {
                 return None;
             }
 
