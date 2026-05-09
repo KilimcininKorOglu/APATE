@@ -18,6 +18,31 @@ impl FacadeResponder {
         Self { server_name }
     }
 
+    pub fn to_http_bytes(response: &FacadeResponse) -> Vec<u8> {
+        let status_text = match response.status_code {
+            200 => "OK",
+            403 => "Forbidden",
+            404 => "Not Found",
+            _ => "OK",
+        };
+
+        let mut http = format!(
+            "HTTP/1.1 {} {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nConnection: close\r\n",
+            response.status_code,
+            status_text,
+            response.content_type,
+            response.body.len(),
+        );
+
+        for (key, value) in &response.headers {
+            http.push_str(&format!("{key}: {value}\r\n"));
+        }
+        http.push_str("\r\n");
+        http.push_str(&response.body);
+
+        http.into_bytes()
+    }
+
     pub fn respond_for_probe(&self, path: &str) -> FacadeResponse {
         let normalized_path = if path.trim().is_empty() { "/" } else { path };
         let mut headers = HashMap::new();

@@ -147,6 +147,11 @@ fn run_server(args: &CliArgs) -> Result<(), String> {
                     }
                     ProbeGateResult::ServeFacade => {
                         let response = facade.respond_for_probe("/");
+                        let http_bytes = FacadeResponder::to_http_bytes(&response);
+                        #[cfg(unix)]
+                        unsafe {
+                            libc::send(token as i32, http_bytes.as_ptr().cast(), http_bytes.len(), 0);
+                        }
                         println!(
                             "{}",
                             format_event(
