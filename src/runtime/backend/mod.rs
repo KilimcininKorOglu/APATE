@@ -1,4 +1,6 @@
 pub mod epoll;
+#[cfg(any(target_os = "linux", test))]
+pub mod io_uring;
 #[cfg(any(target_os = "windows", test))]
 pub mod iocp;
 pub mod kqueue;
@@ -14,6 +16,7 @@ pub trait RuntimeBackend {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BackendKind {
     Epoll,
+    IoUring,
     Kqueue,
     Iocp,
 }
