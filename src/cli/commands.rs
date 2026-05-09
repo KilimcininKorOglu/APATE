@@ -103,7 +103,7 @@ fn run_server(args: &CliArgs) -> Result<(), String> {
     let mut next_token: u64 = 100;
 
     loop {
-        runtime.run_once(0).map_err(|e| e.to_string())?;
+        runtime.tick().map_err(|e| e.to_string())?;
 
         while let Some(token) = runtime.executor.poll_ready_task() {
             if token == 1 {

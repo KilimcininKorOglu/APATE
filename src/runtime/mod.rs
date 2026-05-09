@@ -62,6 +62,11 @@ impl Runtime {
         self.backend.deregister(token)
     }
 
+    pub fn tick(&mut self) -> Result<(), RuntimeError> {
+        let now = self.timer_wheel.now_ms();
+        self.run_once(now)
+    }
+
     pub fn run_once(&mut self, now_tick: u64) -> Result<(), RuntimeError> {
         if !self.running {
             return Err(RuntimeError::EventLoopStartFailed);

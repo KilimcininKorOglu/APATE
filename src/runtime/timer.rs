@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::time::Instant;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TimerEntry {
@@ -6,10 +7,17 @@ pub struct TimerEntry {
     pub deadline_tick: u64,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TimerWheel {
     next_timer_id: u64,
     by_deadline: BTreeMap<u64, Vec<u64>>,
+    epoch: Instant,
+}
+
+impl Default for TimerWheel {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl TimerWheel {
@@ -17,7 +25,17 @@ impl TimerWheel {
         Self {
             next_timer_id: 1,
             by_deadline: BTreeMap::new(),
+            epoch: Instant::now(),
         }
+    }
+
+    pub fn now_ms(&self) -> u64 {
+        self.epoch.elapsed().as_millis() as u64
+    }
+
+    pub fn schedule_after_ms(&mut self, delay_ms: u64) -> u64 {
+        let deadline = self.now_ms() + delay_ms;
+        self.schedule(deadline)
     }
 
     pub fn schedule(&mut self, deadline_tick: u64) -> u64 {
