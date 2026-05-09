@@ -41,8 +41,9 @@ impl RuntimeBackend for IocpBackend {
         use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
         use windows_sys::Win32::System::IO::CreateIoCompletionPort;
 
-        let handle = unsafe { CreateIoCompletionPort(INVALID_HANDLE_VALUE, 0, 0, 1) };
-        if handle == 0 {
+        let handle =
+            unsafe { CreateIoCompletionPort(INVALID_HANDLE_VALUE, std::ptr::null_mut(), 0, 1) };
+        if handle.is_null() {
             return Err(RuntimeError::EventLoopStartFailed);
         }
         self.iocp_handle = handle;
@@ -65,9 +66,9 @@ impl RuntimeBackend for IocpBackend {
             return Err(RuntimeError::EventLoopStartFailed);
         }
 
-        let handle = fd as isize;
+        let handle = fd as usize as windows_sys::Win32::Foundation::HANDLE;
         let result = unsafe { CreateIoCompletionPort(handle, self.iocp_handle, token as usize, 0) };
-        if result == 0 {
+        if result.is_null() {
             return Err(RuntimeError::EventLoopStartFailed);
         }
         self.fd_map.insert(token, fd);
@@ -146,7 +147,7 @@ impl RuntimeBackend for IocpBackend {
 impl Drop for IocpBackend {
     fn drop(&mut self) {
         use windows_sys::Win32::Foundation::{CloseHandle, INVALID_HANDLE_VALUE};
-        if self.iocp_handle != INVALID_HANDLE_VALUE && self.iocp_handle != 0 {
+        if self.iocp_handle != INVALID_HANDLE_VALUE && !self.iocp_handle.is_null() {
             unsafe {
                 CloseHandle(self.iocp_handle);
             }
