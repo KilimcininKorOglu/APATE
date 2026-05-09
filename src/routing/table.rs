@@ -103,7 +103,7 @@ impl RouteTable {
     pub fn add_route(&mut self, cidr: Cidr, target: RouteTarget) {
         self.entries.push(RouteEntry { cidr, target });
         self.entries
-            .sort_by(|left, right| right.cidr.prefix_len().cmp(&left.cidr.prefix_len()));
+            .sort_by_key(|entry| std::cmp::Reverse(entry.cidr.prefix_len()));
     }
 
     pub fn add_route_from_str(

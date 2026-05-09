@@ -1,4 +1,6 @@
 pub mod buf;
+pub mod endian;
+pub mod ring_buf;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectionState {
