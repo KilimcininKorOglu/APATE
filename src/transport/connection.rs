@@ -95,6 +95,14 @@ impl TransportEngine {
         &self.endpoint
     }
 
+    pub fn active_raw_fd(&self) -> Option<i32> {
+        match self.active_kind {
+            TransportKind::UdpTls => self.udp.raw_fd(),
+            TransportKind::TcpTls => self.tcp.raw_fd(),
+            TransportKind::QuicMask => self.quic.raw_fd(),
+        }
+    }
+
     pub fn fec_mode(&self) -> FecMode {
         self.fec_controller.mode()
     }

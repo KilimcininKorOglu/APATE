@@ -123,6 +123,19 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
 
+    if let Some(transport_fd) = engine.active_raw_fd() {
+        runtime
+            .register_fd(
+                20,
+                transport_fd,
+                FdInterest {
+                    readable: true,
+                    writable: true,
+                },
+            )
+            .map_err(|e| e.to_string())?;
+    }
+
     loop {
         runtime.tick().map_err(|e| e.to_string())?;
 

@@ -32,6 +32,10 @@ impl QuicMaskTransport {
         }
     }
 
+    pub fn raw_fd(&self) -> Option<i32> {
+        None
+    }
+
     pub fn connect(&mut self, _timeout: Duration) -> Result<AttemptOutcome, TransportError> {
         match self.connect_policy {
             QuicMaskConnectPolicy::Success => {
