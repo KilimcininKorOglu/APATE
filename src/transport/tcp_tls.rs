@@ -152,6 +152,7 @@ impl TransportStrategy for TcpTlsTransport {
             return Err(TransportError::NotConnected);
         }
 
+        #[cfg(unix)]
         if let Some(fd) = self.fd {
             let encoded = encode_frame(&frame, 0).map_err(TransportError::Frame)?;
             let mut offset = 0;
@@ -181,6 +182,7 @@ impl TransportStrategy for TcpTlsTransport {
             return Err(TransportError::NotConnected);
         }
 
+        #[cfg(unix)]
         if let Some(fd) = self.fd {
             let mut header_buf = [0u8; FRAME_HEADER_LEN];
             let received = unsafe {

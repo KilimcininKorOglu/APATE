@@ -151,6 +151,7 @@ impl TransportStrategy for UdpTlsTransport {
             return Err(TransportError::NotConnected);
         }
 
+        #[cfg(unix)]
         if let Some(fd) = self.fd {
             let encoded = encode_frame(&frame, 0).map_err(TransportError::Frame)?;
             let sent = unsafe { libc::send(fd, encoded.as_ptr().cast(), encoded.len(), 0) };
@@ -169,6 +170,7 @@ impl TransportStrategy for UdpTlsTransport {
             return Err(TransportError::NotConnected);
         }
 
+        #[cfg(unix)]
         if let Some(fd) = self.fd {
             let mut buf = [0u8; 65536];
             let received = unsafe { libc::recv(fd, buf.as_mut_ptr().cast(), buf.len(), 0) };
