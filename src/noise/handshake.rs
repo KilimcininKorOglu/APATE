@@ -155,8 +155,7 @@ mod tests {
                 .expect("client processes server hello")
         );
 
-        let signature =
-            sign_message(server_signing_key, &client.symmetric_state.handshake_hash);
+        let signature = sign_message(server_signing_key, &client.symmetric_state.handshake_hash);
 
         assert_eq!(
             HandshakeState::Established,

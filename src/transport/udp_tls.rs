@@ -60,9 +60,7 @@ impl UdpTlsTransport {
     fn connect_real(&mut self, endpoint: String) -> Result<AttemptOutcome, TransportError> {
         use std::net::SocketAddr;
 
-        let addr: SocketAddr = endpoint
-            .parse()
-            .map_err(|_| TransportError::NotConnected)?;
+        let addr: SocketAddr = endpoint.parse().map_err(|_| TransportError::NotConnected)?;
 
         let fd = unsafe {
             libc::socket(
@@ -126,7 +124,9 @@ impl UdpTlsTransport {
         };
 
         if result < 0 {
-            unsafe { libc::close(fd); }
+            unsafe {
+                libc::close(fd);
+            }
             return Ok(AttemptOutcome::Failed);
         }
 
@@ -152,11 +152,8 @@ impl TransportStrategy for UdpTlsTransport {
         }
 
         if let Some(fd) = self.fd {
-            let encoded =
-                encode_frame(&frame, 0).map_err(TransportError::Frame)?;
-            let sent = unsafe {
-                libc::send(fd, encoded.as_ptr().cast(), encoded.len(), 0)
-            };
+            let encoded = encode_frame(&frame, 0).map_err(TransportError::Frame)?;
+            let sent = unsafe { libc::send(fd, encoded.as_ptr().cast(), encoded.len(), 0) };
             if sent < 0 {
                 return Err(TransportError::NotConnected);
             }
@@ -174,14 +171,11 @@ impl TransportStrategy for UdpTlsTransport {
 
         if let Some(fd) = self.fd {
             let mut buf = [0u8; 65536];
-            let received = unsafe {
-                libc::recv(fd, buf.as_mut_ptr().cast(), buf.len(), 0)
-            };
+            let received = unsafe { libc::recv(fd, buf.as_mut_ptr().cast(), buf.len(), 0) };
             if received <= 0 {
                 return Ok(None);
             }
-            let decoded = decode_frame(&buf[..received as usize])
-                .map_err(TransportError::Frame)?;
+            let decoded = decode_frame(&buf[..received as usize]).map_err(TransportError::Frame)?;
             return Ok(Some(decoded.frame));
         }
 
@@ -193,7 +187,9 @@ impl Drop for UdpTlsTransport {
     fn drop(&mut self) {
         #[cfg(unix)]
         if let Some(fd) = self.fd {
-            unsafe { libc::close(fd); }
+            unsafe {
+                libc::close(fd);
+            }
         }
     }
 }

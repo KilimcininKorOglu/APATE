@@ -35,9 +35,7 @@ impl TunnelAdapter for MacOsTunAdapter {
         let unit_str = &self.name["utun".len()..];
         let unit: u32 = unit_str.parse().map_err(|_| TunnelError::OpenFailed)?;
 
-        let fd = unsafe {
-            libc::socket(libc::PF_SYSTEM, libc::SOCK_DGRAM, libc::SYSPROTO_CONTROL)
-        };
+        let fd = unsafe { libc::socket(libc::PF_SYSTEM, libc::SOCK_DGRAM, libc::SYSPROTO_CONTROL) };
         if fd < 0 {
             self.opened = true;
             self.loopback_queue = VecDeque::new();
@@ -56,7 +54,9 @@ impl TunnelAdapter for MacOsTunAdapter {
 
         let ioctl_result = unsafe { libc::ioctl(fd, libc::CTLIOCGINFO, &mut info) };
         if ioctl_result < 0 {
-            unsafe { libc::close(fd); }
+            unsafe {
+                libc::close(fd);
+            }
             self.opened = true;
             return Ok(());
         }
@@ -77,7 +77,9 @@ impl TunnelAdapter for MacOsTunAdapter {
         };
 
         if connect_result < 0 {
-            unsafe { libc::close(fd); }
+            unsafe {
+                libc::close(fd);
+            }
             self.opened = true;
             return Ok(());
         }
@@ -120,8 +122,8 @@ impl TunnelAdapter for MacOsTunAdapter {
             if n <= 4 {
                 return Ok(None);
             }
-            let packet = TunnelPacket::parse(&buf[4..n as usize])
-                .map_err(|_| TunnelError::InvalidPacket)?;
+            let packet =
+                TunnelPacket::parse(&buf[4..n as usize]).map_err(|_| TunnelError::InvalidPacket)?;
             return Ok(Some(packet));
         }
 
@@ -170,7 +172,9 @@ impl Drop for MacOsTunAdapter {
     fn drop(&mut self) {
         #[cfg(target_os = "macos")]
         if let Some(fd) = self.fd {
-            unsafe { libc::close(fd); }
+            unsafe {
+                libc::close(fd);
+            }
         }
     }
 }

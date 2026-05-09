@@ -100,7 +100,12 @@ impl RuntimeBackend for KqueueBackend {
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "freebsd")))]
-    fn register(&mut self, _token: u64, _fd: i32, _interest: FdInterest) -> Result<(), RuntimeError> {
+    fn register(
+        &mut self,
+        _token: u64,
+        _fd: i32,
+        _interest: FdInterest,
+    ) -> Result<(), RuntimeError> {
         Ok(())
     }
 
@@ -160,9 +165,7 @@ impl RuntimeBackend for KqueueBackend {
         };
 
         if count < 0 {
-            let errno = std::io::Error::last_os_error()
-                .raw_os_error()
-                .unwrap_or(0);
+            let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
             if errno == libc::EINTR {
                 return Ok(());
             }
@@ -170,7 +173,6 @@ impl RuntimeBackend for KqueueBackend {
         }
 
         for ev in &event_buf[..count as usize] {
-
             if ev.flags & libc::EV_ERROR != 0 {
                 continue;
             }

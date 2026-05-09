@@ -184,7 +184,9 @@ impl AppConfig {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::types::{AppConfig, AuthConfig, ClientConfig, DnsMode, RoutingMode, ServerConfig};
+    use crate::config::types::{
+        AppConfig, AuthConfig, ClientConfig, DnsMode, RoutingMode, ServerConfig,
+    };
     use crate::util::{AuthMethod, TransportMode};
 
     #[test]

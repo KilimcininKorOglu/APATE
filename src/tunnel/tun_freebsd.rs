@@ -33,9 +33,7 @@ impl TunnelAdapter for FreeBsdTunAdapter {
         }
 
         let dev_path = format!("/dev/{}\0", self.name);
-        let fd = unsafe {
-            libc::open(dev_path.as_ptr().cast(), libc::O_RDWR | libc::O_NONBLOCK)
-        };
+        let fd = unsafe { libc::open(dev_path.as_ptr().cast(), libc::O_RDWR | libc::O_NONBLOCK) };
 
         if fd < 0 {
             self.opened = true;
@@ -76,8 +74,8 @@ impl TunnelAdapter for FreeBsdTunAdapter {
             if n <= 4 {
                 return Ok(None);
             }
-            let packet = TunnelPacket::parse(&buf[4..n as usize])
-                .map_err(|_| TunnelError::InvalidPacket)?;
+            let packet =
+                TunnelPacket::parse(&buf[4..n as usize]).map_err(|_| TunnelError::InvalidPacket)?;
             return Ok(Some(packet));
         }
 
@@ -126,7 +124,9 @@ impl Drop for FreeBsdTunAdapter {
     fn drop(&mut self) {
         #[cfg(target_os = "freebsd")]
         if let Some(fd) = self.fd {
-            unsafe { libc::close(fd); }
+            unsafe {
+                libc::close(fd);
+            }
         }
     }
 }

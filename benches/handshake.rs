@@ -16,7 +16,12 @@ fn handshake_benchmarks(criterion: &mut Criterion) {
     group.throughput(Throughput::Elements(3));
     group.bench_with_input(
         BenchmarkId::new("full_handshake_roundtrip", 3),
-        &(client_eph_pub, server_eph_pub, server_signing_key, server_verifying_key),
+        &(
+            client_eph_pub,
+            server_eph_pub,
+            server_signing_key,
+            server_verifying_key,
+        ),
         |bencher, &(client_pub, server_pub, signing_key, verifying_key)| {
             bencher.iter(|| {
                 let mut machine = HandshakeMachine::new(verifying_key);

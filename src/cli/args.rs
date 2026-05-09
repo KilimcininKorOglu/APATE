@@ -108,9 +108,8 @@ mod tests {
 
     #[test]
     fn parse_server_with_config() {
-        let parsed =
-            CliArgs::parse_from_slice(&args(&["server", "--config", "/etc/apate.conf"]))
-                .expect("parse");
+        let parsed = CliArgs::parse_from_slice(&args(&["server", "--config", "/etc/apate.conf"]))
+            .expect("parse");
         assert_eq!(Command::Server, parsed.command);
         assert_eq!(Some(String::from("/etc/apate.conf")), parsed.config_path);
     }

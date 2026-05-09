@@ -67,7 +67,9 @@ impl TunnelAdapter for LinuxTunAdapter {
         let ioctl_result = unsafe { libc::ioctl(fd, TUNSETIFF, &mut ifr) };
 
         if ioctl_result < 0 {
-            unsafe { libc::close(fd); }
+            unsafe {
+                libc::close(fd);
+            }
             self.opened = true;
             return Ok(());
         }
@@ -106,8 +108,8 @@ impl TunnelAdapter for LinuxTunAdapter {
             if n <= 0 {
                 return Ok(None);
             }
-            let packet = TunnelPacket::parse(&buf[..n as usize])
-                .map_err(|_| TunnelError::InvalidPacket)?;
+            let packet =
+                TunnelPacket::parse(&buf[..n as usize]).map_err(|_| TunnelError::InvalidPacket)?;
             return Ok(Some(packet));
         }
 
@@ -149,7 +151,9 @@ impl Drop for LinuxTunAdapter {
     fn drop(&mut self) {
         #[cfg(target_os = "linux")]
         if let Some(fd) = self.fd {
-            unsafe { libc::close(fd); }
+            unsafe {
+                libc::close(fd);
+            }
         }
     }
 }

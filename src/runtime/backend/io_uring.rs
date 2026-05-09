@@ -116,11 +116,10 @@ mod ring {
                 return Err(());
             }
 
-            let sq_ring_sz =
-                (params.sq_off.array + params.sq_entries * 4) as usize;
-            let cq_ring_sz =
-                (params.cq_off.cqes + params.cq_entries * std::mem::size_of::<IoUringCqe>() as u32)
-                    as usize;
+            let sq_ring_sz = (params.sq_off.array + params.sq_entries * 4) as usize;
+            let cq_ring_sz = (params.cq_off.cqes
+                + params.cq_entries * std::mem::size_of::<IoUringCqe>() as u32)
+                as usize;
             let sqes_sz = params.sq_entries as usize * std::mem::size_of::<IoUringSqe>();
 
             let sq_ring_ptr = libc::mmap(
@@ -357,7 +356,12 @@ impl RuntimeBackend for IoUringBackend {
     }
 
     #[cfg(not(target_os = "linux"))]
-    fn register(&mut self, _token: u64, _fd: i32, _interest: FdInterest) -> Result<(), RuntimeError> {
+    fn register(
+        &mut self,
+        _token: u64,
+        _fd: i32,
+        _interest: FdInterest,
+    ) -> Result<(), RuntimeError> {
         Ok(())
     }
 

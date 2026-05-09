@@ -23,8 +23,7 @@ fn load_config(args: &CliArgs) -> Result<AppConfig, String> {
     let source = fs::read_to_string(config_path)
         .map_err(|e| format!("cannot read config {config_path}: {e}"))?;
 
-    let config = parse_config(&source)
-        .map_err(|e| format!("config parse error: {e}"))?;
+    let config = parse_config(&source).map_err(|e| format!("config parse error: {e}"))?;
 
     config
         .validate()
@@ -153,8 +152,10 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
 }
 
 fn run_server(args: &CliArgs) -> Result<(), String> {
-    use crate::auth::{AuthCoordinator, AuthInput, ProbeGatePolicy, ProbeGateResult, evaluate_probe_gate};
     use crate::auth::static_key::StaticKeyBackend;
+    use crate::auth::{
+        AuthCoordinator, AuthInput, ProbeGatePolicy, ProbeGateResult, evaluate_probe_gate,
+    };
     use crate::runtime::Runtime;
     use crate::runtime::backend::FdInterest;
     use crate::stealth::facade::FacadeResponder;
@@ -249,15 +250,29 @@ fn run_server(args: &CliArgs) -> Result<(), String> {
                 let bytes_read = {
                     #[cfg(unix)]
                     {
-                        unsafe { libc::recv(token as i32, read_buf.as_mut_ptr().cast(), read_buf.len(), 0) }
+                        unsafe {
+                            libc::recv(
+                                token as i32,
+                                read_buf.as_mut_ptr().cast(),
+                                read_buf.len(),
+                                0,
+                            )
+                        }
                     }
                     #[cfg(not(unix))]
-                    { 0isize }
+                    {
+                        0isize
+                    }
                 };
 
                 let auth_result = if bytes_read > 0 {
                     let input = AuthInput {
-                        method: config.auth.methods.first().copied().unwrap_or(AuthMethod::StaticKey),
+                        method: config
+                            .auth
+                            .methods
+                            .first()
+                            .copied()
+                            .unwrap_or(AuthMethod::StaticKey),
                         payload: read_buf[..bytes_read as usize].to_vec(),
                     };
                     coordinator.authenticate(input)
@@ -282,7 +297,12 @@ fn run_server(args: &CliArgs) -> Result<(), String> {
                         let http_bytes = FacadeResponder::to_http_bytes(&response);
                         #[cfg(unix)]
                         unsafe {
-                            libc::send(token as i32, http_bytes.as_ptr().cast(), http_bytes.len(), 0);
+                            libc::send(
+                                token as i32,
+                                http_bytes.as_ptr().cast(),
+                                http_bytes.len(),
+                                0,
+                            );
                         }
                         println!(
                             "{}",
@@ -383,13 +403,17 @@ fn create_listener(addr: std::net::SocketAddr) -> Result<i32, String> {
     };
 
     if bind_result < 0 {
-        unsafe { libc::close(fd); }
+        unsafe {
+            libc::close(fd);
+        }
         return Err(format!("bind to {} failed", addr));
     }
 
     let listen_result = unsafe { libc::listen(fd, 128) };
     if listen_result < 0 {
-        unsafe { libc::close(fd); }
+        unsafe {
+            libc::close(fd);
+        }
         return Err(String::from("listen failed"));
     }
 
@@ -402,14 +426,14 @@ fn create_listener(addr: std::net::SocketAddr) -> Result<i32, String> {
 
 #[cfg(not(unix))]
 fn create_listener(_addr: std::net::SocketAddr) -> Result<i32, String> {
-    Err(String::from("server listener not supported on this platform"))
+    Err(String::from(
+        "server listener not supported on this platform",
+    ))
 }
 
 #[cfg(unix)]
 fn accept_connection(listener_fd: i32) -> Option<i32> {
-    let fd = unsafe {
-        libc::accept(listener_fd, std::ptr::null_mut(), std::ptr::null_mut())
-    };
+    let fd = unsafe { libc::accept(listener_fd, std::ptr::null_mut(), std::ptr::null_mut()) };
     if fd < 0 {
         return None;
     }

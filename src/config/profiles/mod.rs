@@ -164,18 +164,16 @@ fn parse_override(name: &str, source: &str) -> Result<StealthProfile, ProfileErr
                         })?;
             }
             "cipher_suites" => {
-                profile.cipher_suites = parse_u16_list(value).map_err(|_| {
-                    ProfileError::InvalidProfile {
+                profile.cipher_suites =
+                    parse_u16_list(value).map_err(|_| ProfileError::InvalidProfile {
                         field: String::from("cipher_suites"),
-                    }
-                })?;
+                    })?;
             }
             "extensions" => {
-                profile.extensions = parse_u16_list(value).map_err(|_| {
-                    ProfileError::InvalidProfile {
+                profile.extensions =
+                    parse_u16_list(value).map_err(|_| ProfileError::InvalidProfile {
                         field: String::from("extensions"),
-                    }
-                })?;
+                    })?;
             }
             _ => {
                 return Err(ProfileError::InvalidOverrideKey {

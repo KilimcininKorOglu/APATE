@@ -68,9 +68,7 @@ impl RuntimeBackend for EpollBackend {
 
         let mut ev = libc::epoll_event { events, u64: token };
 
-        let result = unsafe {
-            libc::epoll_ctl(self.epfd, libc::EPOLL_CTL_ADD, fd, &mut ev)
-        };
+        let result = unsafe { libc::epoll_ctl(self.epfd, libc::EPOLL_CTL_ADD, fd, &mut ev) };
         if result < 0 {
             return Err(RuntimeError::EventLoopStartFailed);
         }
@@ -80,7 +78,12 @@ impl RuntimeBackend for EpollBackend {
     }
 
     #[cfg(not(target_os = "linux"))]
-    fn register(&mut self, _token: u64, _fd: i32, _interest: FdInterest) -> Result<(), RuntimeError> {
+    fn register(
+        &mut self,
+        _token: u64,
+        _fd: i32,
+        _interest: FdInterest,
+    ) -> Result<(), RuntimeError> {
         Ok(())
     }
 
@@ -107,14 +110,10 @@ impl RuntimeBackend for EpollBackend {
 
         let mut event_buf: [libc::epoll_event; 64] = unsafe { std::mem::zeroed() };
 
-        let count = unsafe {
-            libc::epoll_wait(self.epfd, event_buf.as_mut_ptr(), 64, 0)
-        };
+        let count = unsafe { libc::epoll_wait(self.epfd, event_buf.as_mut_ptr(), 64, 0) };
 
         if count < 0 {
-            let errno = std::io::Error::last_os_error()
-                .raw_os_error()
-                .unwrap_or(0);
+            let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
             if errno == libc::EINTR {
                 return Ok(());
             }

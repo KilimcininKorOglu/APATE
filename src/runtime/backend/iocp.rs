@@ -65,9 +65,7 @@ impl RuntimeBackend for IocpBackend {
         }
 
         let handle = fd as isize;
-        let result = unsafe {
-            CreateIoCompletionPort(handle, self.iocp_handle, token as usize, 0)
-        };
+        let result = unsafe { CreateIoCompletionPort(handle, self.iocp_handle, token as usize, 0) };
         if result == 0 {
             return Err(RuntimeError::EventLoopStartFailed);
         }
@@ -76,7 +74,12 @@ impl RuntimeBackend for IocpBackend {
     }
 
     #[cfg(not(target_os = "windows"))]
-    fn register(&mut self, _token: u64, _fd: i32, _interest: FdInterest) -> Result<(), RuntimeError> {
+    fn register(
+        &mut self,
+        _token: u64,
+        _fd: i32,
+        _interest: FdInterest,
+    ) -> Result<(), RuntimeError> {
         Ok(())
     }
 

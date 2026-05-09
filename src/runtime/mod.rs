@@ -54,7 +54,12 @@ impl Runtime {
         self.backend.name()
     }
 
-    pub fn register_fd(&mut self, token: u64, fd: i32, interest: FdInterest) -> Result<(), RuntimeError> {
+    pub fn register_fd(
+        &mut self,
+        token: u64,
+        fd: i32,
+        interest: FdInterest,
+    ) -> Result<(), RuntimeError> {
         self.backend.register(token, fd, interest)
     }
 

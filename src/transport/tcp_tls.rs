@@ -1,4 +1,4 @@
-use crate::transport::frame::{decode_frame, encode_frame, FRAME_HEADER_LEN};
+use crate::transport::frame::{FRAME_HEADER_LEN, decode_frame, encode_frame};
 use crate::transport::mode::AttemptOutcome;
 use crate::transport::{Frame, TransportError, TransportStrategy};
 use core::time::Duration;
@@ -58,9 +58,7 @@ impl TcpTlsTransport {
     fn connect_real(&mut self, endpoint: String) -> Result<AttemptOutcome, TransportError> {
         use std::net::SocketAddr;
 
-        let addr: SocketAddr = endpoint
-            .parse()
-            .map_err(|_| TransportError::NotConnected)?;
+        let addr: SocketAddr = endpoint.parse().map_err(|_| TransportError::NotConnected)?;
 
         let fd = unsafe {
             libc::socket(
@@ -124,11 +122,11 @@ impl TcpTlsTransport {
         };
 
         if result < 0 {
-            let errno = std::io::Error::last_os_error()
-                .raw_os_error()
-                .unwrap_or(0);
+            let errno = std::io::Error::last_os_error().raw_os_error().unwrap_or(0);
             if errno != libc::EINPROGRESS {
-                unsafe { libc::close(fd); }
+                unsafe {
+                    libc::close(fd);
+                }
                 return Ok(AttemptOutcome::Failed);
             }
         }
@@ -155,8 +153,7 @@ impl TransportStrategy for TcpTlsTransport {
         }
 
         if let Some(fd) = self.fd {
-            let encoded =
-                encode_frame(&frame, 0).map_err(TransportError::Frame)?;
+            let encoded = encode_frame(&frame, 0).map_err(TransportError::Frame)?;
             let mut offset = 0;
             while offset < encoded.len() {
                 let sent = unsafe {
@@ -187,7 +184,12 @@ impl TransportStrategy for TcpTlsTransport {
         if let Some(fd) = self.fd {
             let mut header_buf = [0u8; FRAME_HEADER_LEN];
             let received = unsafe {
-                libc::recv(fd, header_buf.as_mut_ptr().cast(), FRAME_HEADER_LEN, libc::MSG_PEEK)
+                libc::recv(
+                    fd,
+                    header_buf.as_mut_ptr().cast(),
+                    FRAME_HEADER_LEN,
+                    libc::MSG_PEEK,
+                )
             };
             if received < FRAME_HEADER_LEN as isize {
                 return Ok(None);
@@ -196,15 +198,12 @@ impl TransportStrategy for TcpTlsTransport {
             let payload_len = u16::from_be_bytes([header_buf[2], header_buf[3]]) as usize;
             let total_len = FRAME_HEADER_LEN + payload_len;
             let mut buf = vec![0u8; total_len];
-            let received = unsafe {
-                libc::recv(fd, buf.as_mut_ptr().cast(), total_len, 0)
-            };
+            let received = unsafe { libc::recv(fd, buf.as_mut_ptr().cast(), total_len, 0) };
             if received < total_len as isize {
                 return Ok(None);
             }
 
-            let decoded = decode_frame(&buf[..received as usize])
-                .map_err(TransportError::Frame)?;
+            let decoded = decode_frame(&buf[..received as usize]).map_err(TransportError::Frame)?;
             return Ok(Some(decoded.frame));
         }
 
@@ -216,7 +215,9 @@ impl Drop for TcpTlsTransport {
     fn drop(&mut self) {
         #[cfg(unix)]
         if let Some(fd) = self.fd {
-            unsafe { libc::close(fd); }
+            unsafe {
+                libc::close(fd);
+            }
         }
     }
 }
