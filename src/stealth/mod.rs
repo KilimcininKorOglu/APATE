@@ -5,6 +5,7 @@ pub mod padding;
 pub mod server_hello;
 pub mod timing;
 pub mod tls_camouflage;
+pub mod traffic_shaping;
 
 use crate::config::profiles::{ProfileError, StealthProfile, load_profile};
 use std::fs;
