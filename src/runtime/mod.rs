@@ -5,7 +5,7 @@ pub mod timer;
 pub mod waker;
 
 use crate::RuntimeError;
-use crate::runtime::backend::{RuntimeBackend, select_backend};
+use crate::runtime::backend::{FdInterest, RuntimeBackend, select_backend};
 use crate::runtime::executor::Executor;
 use crate::runtime::reactor::{Reactor, ReactorEvent};
 use crate::runtime::timer::TimerWheel;
@@ -52,6 +52,14 @@ impl Runtime {
 
     pub fn backend_name(&self) -> &'static str {
         self.backend.name()
+    }
+
+    pub fn register_fd(&mut self, token: u64, fd: i32, interest: FdInterest) -> Result<(), RuntimeError> {
+        self.backend.register(token, fd, interest)
+    }
+
+    pub fn deregister_fd(&mut self, token: u64) -> Result<(), RuntimeError> {
+        self.backend.deregister(token)
     }
 
     pub fn run_once(&mut self, now_tick: u64) -> Result<(), RuntimeError> {

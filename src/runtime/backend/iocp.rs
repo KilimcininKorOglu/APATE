@@ -1,5 +1,5 @@
 use crate::RuntimeError;
-use crate::runtime::backend::{ReadyEvent, RuntimeBackend};
+use crate::runtime::backend::{FdInterest, ReadyEvent, RuntimeBackend};
 
 #[derive(Debug, Default)]
 pub struct IocpBackend {
@@ -29,6 +29,14 @@ impl RuntimeBackend for IocpBackend {
         }
 
         self.initialized = true;
+        Ok(())
+    }
+
+    fn register(&mut self, _token: u64, _fd: i32, _interest: FdInterest) -> Result<(), RuntimeError> {
+        Ok(())
+    }
+
+    fn deregister(&mut self, _token: u64) -> Result<(), RuntimeError> {
         Ok(())
     }
 

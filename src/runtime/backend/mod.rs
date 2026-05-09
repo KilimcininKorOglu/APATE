@@ -14,9 +14,17 @@ pub struct ReadyEvent {
     pub writable: bool,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FdInterest {
+    pub readable: bool,
+    pub writable: bool,
+}
+
 pub trait RuntimeBackend {
     fn name(&self) -> &'static str;
     fn initialize(&mut self) -> Result<(), RuntimeError>;
+    fn register(&mut self, token: u64, fd: i32, interest: FdInterest) -> Result<(), RuntimeError>;
+    fn deregister(&mut self, token: u64) -> Result<(), RuntimeError>;
     fn poll(&mut self, events: &mut Vec<ReadyEvent>) -> Result<(), RuntimeError>;
 }
 
