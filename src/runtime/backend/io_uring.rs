@@ -1,5 +1,5 @@
 use crate::RuntimeError;
-use crate::runtime::backend::RuntimeBackend;
+use crate::runtime::backend::{ReadyEvent, RuntimeBackend};
 
 #[derive(Debug, Default)]
 pub struct IoUringBackend {
@@ -22,12 +22,12 @@ impl RuntimeBackend for IoUringBackend {
         Ok(())
     }
 
-    fn poll(&mut self) -> Result<usize, RuntimeError> {
+    fn poll(&mut self, _events: &mut Vec<ReadyEvent>) -> Result<(), RuntimeError> {
         if !self.initialized {
             return Err(RuntimeError::EventLoopStartFailed);
         }
 
-        Ok(0)
+        Ok(())
     }
 }
 
@@ -39,9 +39,11 @@ mod tests {
     #[test]
     fn io_uring_requires_initialization_before_poll() {
         let mut backend = IoUringBackend::new();
-        assert!(backend.poll().is_err());
+        let mut events = Vec::new();
+        assert!(backend.poll(&mut events).is_err());
 
         assert!(backend.initialize().is_ok());
-        assert_eq!(Ok(0), backend.poll());
+        assert!(backend.poll(&mut events).is_ok());
+        assert!(events.is_empty());
     }
 }

@@ -1,5 +1,5 @@
 use crate::RuntimeError;
-use crate::runtime::backend::RuntimeBackend;
+use crate::runtime::backend::{ReadyEvent, RuntimeBackend};
 
 #[derive(Debug, Default)]
 pub struct IocpBackend {
@@ -32,12 +32,12 @@ impl RuntimeBackend for IocpBackend {
         Ok(())
     }
 
-    fn poll(&mut self) -> Result<usize, RuntimeError> {
+    fn poll(&mut self, _events: &mut Vec<ReadyEvent>) -> Result<(), RuntimeError> {
         if !self.initialized {
             return Err(RuntimeError::EventLoopStartFailed);
         }
 
-        Ok(0)
+        Ok(())
     }
 }
 
@@ -49,11 +49,13 @@ mod tests {
     #[test]
     fn iocp_backend_reports_platform_support() {
         let mut backend = IocpBackend::new();
+        let mut events = Vec::new();
 
         let init_result = backend.initialize();
         if cfg!(target_os = "windows") {
             assert!(init_result.is_ok());
-            assert_eq!(Ok(0), backend.poll());
+            assert!(backend.poll(&mut events).is_ok());
+            assert!(events.is_empty());
         } else {
             assert!(init_result.is_err());
         }

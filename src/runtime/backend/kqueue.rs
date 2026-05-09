@@ -1,5 +1,5 @@
 use crate::RuntimeError;
-use crate::runtime::backend::RuntimeBackend;
+use crate::runtime::backend::{ReadyEvent, RuntimeBackend};
 
 #[derive(Debug, Default)]
 pub struct KqueueBackend {
@@ -32,12 +32,12 @@ impl RuntimeBackend for KqueueBackend {
         Ok(())
     }
 
-    fn poll(&mut self) -> Result<usize, RuntimeError> {
+    fn poll(&mut self, _events: &mut Vec<ReadyEvent>) -> Result<(), RuntimeError> {
         if !self.initialized {
             return Err(RuntimeError::EventLoopStartFailed);
         }
 
-        Ok(0)
+        Ok(())
     }
 }
 
@@ -49,12 +49,14 @@ mod tests {
     #[test]
     fn kqueue_initialization_is_target_gated() {
         let mut backend = KqueueBackend::new();
-        assert!(backend.poll().is_err());
+        let mut events = Vec::new();
+        assert!(backend.poll(&mut events).is_err());
 
         let init_result = backend.initialize();
         if cfg!(target_os = "macos") || cfg!(target_os = "freebsd") {
             assert!(init_result.is_ok());
-            assert_eq!(Ok(0), backend.poll());
+            assert!(backend.poll(&mut events).is_ok());
+            assert!(events.is_empty());
         } else {
             assert!(init_result.is_err());
         }
