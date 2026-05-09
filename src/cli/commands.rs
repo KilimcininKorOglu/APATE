@@ -34,19 +34,109 @@ fn load_config(args: &CliArgs) -> Result<AppConfig, String> {
 }
 
 fn run_client(args: &CliArgs) -> Result<(), String> {
+    use crate::noise::handshake::HandshakeMachine;
+    use crate::runtime::Runtime;
+    use crate::runtime::backend::FdInterest;
+    use crate::transport::connection::TransportEngine;
+    use crate::transport::mode::ModeNegotiator;
+    use crate::transport::tcp_tls::{TcpConnectPolicy, TcpTlsTransport};
+    use crate::transport::udp_tls::{UdpConnectPolicy, UdpTlsTransport};
+    use crate::tunnel::TunnelAdapter;
+
     let config = load_config(args)?;
+
+    let mut runtime = Runtime::new();
+    runtime.start().map_err(|e| e.to_string())?;
+
+    let negotiator = ModeNegotiator::new(
+        config.transport.mode,
+        config.transport.fallback_timeout_secs,
+    );
+
+    let mut udp = UdpTlsTransport::new(UdpConnectPolicy::Success);
+    udp.set_endpoint(config.client.server.clone());
+
+    let mut tcp = TcpTlsTransport::new(TcpConnectPolicy::Success);
+    tcp.set_endpoint(config.client.server.clone());
+
+    let mut engine = TransportEngine::new(negotiator, udp, tcp);
+
+    let server_static_public = [0u8; 32];
+    let handshake = HandshakeMachine::new(server_static_public);
+    engine.set_handshake(handshake);
+
     println!(
         "{}",
         format_event(
             EventCode::Startup,
             &format!(
-                "mode=client server={} transport={}",
+                "mode=client server={} transport={} backend={}",
                 config.client.server,
-                config.transport.mode.as_str()
-            )
-        )
+                config.transport.mode.as_str(),
+                runtime.backend_name(),
+            ),
+        ),
     );
-    Ok(())
+
+    engine.establish().map_err(|e| e.to_string())?;
+
+    println!(
+        "{}",
+        format_event(
+            EventCode::HandshakeSuccess,
+            &format!(
+                "transport={:?} endpoint={}",
+                engine.active_kind(),
+                engine.endpoint(),
+            ),
+        ),
+    );
+
+    #[cfg(target_os = "macos")]
+    let mut tun = crate::tunnel::MacOsTunAdapter::new(String::from("utun7"));
+    #[cfg(target_os = "linux")]
+    let mut tun = crate::tunnel::LinuxTunAdapter::new(String::from("apate0"));
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    let mut tun = crate::tunnel::LinuxTunAdapter::new(String::from("apate0"));
+
+    tun.open().map_err(|e| e.to_string())?;
+    tun.configure(1400).map_err(|e| e.to_string())?;
+
+    println!(
+        "{}",
+        format_event(
+            EventCode::RuntimeReady,
+            &format!("tunnel={} mtu={}", tun.name(), tun.mtu()),
+        ),
+    );
+
+    if let Some(tun_fd) = tun.raw_fd() {
+        runtime
+            .register_fd(
+                10,
+                tun_fd,
+                FdInterest {
+                    readable: true,
+                    writable: false,
+                },
+            )
+            .map_err(|e| e.to_string())?;
+    }
+
+    loop {
+        runtime.tick().map_err(|e| e.to_string())?;
+
+        if let Some(packet) = tun.read_packet().map_err(|e| e.to_string())? {
+            let payload = packet.as_bytes().to_vec();
+            let _ = engine.send_payload(payload);
+        }
+
+        if let Some(frame) = engine.recv_frame().map_err(|e| e.to_string())?
+            && let Ok(packet) = crate::tunnel::TunnelPacket::parse(&frame.payload)
+        {
+            let _ = tun.write_packet(packet);
+        }
+    }
 }
 
 fn run_server(args: &CliArgs) -> Result<(), String> {
