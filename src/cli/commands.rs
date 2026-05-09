@@ -36,6 +36,7 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
     use crate::noise::handshake::HandshakeMachine;
     use crate::runtime::Runtime;
     use crate::runtime::backend::FdInterest;
+    use crate::stealth::traffic_shaping::TrafficShapingEngine;
     use crate::transport::connection::TransportEngine;
     use crate::transport::mode::ModeNegotiator;
     use crate::transport::quic_mask::{QuicMaskConnectPolicy, QuicTransport};
@@ -126,6 +127,11 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
 
+    let traffic_profile_name = crate::config::profiles::builtin_profile(&config.stealth.profile)
+        .and_then(|p| p.traffic_profile)
+        .unwrap_or_else(|| String::from("chrome_h3"));
+    let mut shaping_engine = TrafficShapingEngine::from_profile_name(&traffic_profile_name);
+
     if let Some(transport_fd) = engine.active_raw_fd() {
         runtime
             .register_fd(
@@ -143,8 +149,12 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
         runtime.tick().map_err(|e| e.to_string())?;
 
         if let Some(packet) = tun.read_packet().map_err(|e| e.to_string())? {
-            let payload = packet.as_bytes().to_vec();
-            let _ = engine.send_payload(payload);
+            let shaped = shaping_engine.shape_packet(packet.as_bytes());
+            let _ = engine.send_payload(shaped.payload);
+        }
+
+        if let Some(chaff) = shaping_engine.should_send_chaff() {
+            let _ = engine.send_payload(chaff.payload);
         }
 
         if let Some(frame) = engine.recv_frame().map_err(|e| e.to_string())?

@@ -14,5 +14,6 @@ pub fn profile() -> StealthProfile {
         extensions: vec![
             0x0000, 0xFF01, 0x000A, 0x000B, 0x0023, 0x0010, 0x0005, 0x0012, 0x0033, 0x002B, 0x002D,
         ],
+        traffic_profile: Some(String::from("chrome_h3")),
     }
 }

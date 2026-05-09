@@ -18,6 +18,7 @@ pub struct StealthProfile {
     pub max_jitter_ms: u16,
     pub cipher_suites: Vec<u16>,
     pub extensions: Vec<u16>,
+    pub traffic_profile: Option<String>,
 }
 
 impl StealthProfile {
@@ -112,6 +113,7 @@ fn parse_override(name: &str, source: &str) -> Result<StealthProfile, ProfileErr
         max_jitter_ms: 20,
         cipher_suites: vec![0x1301, 0x1302, 0x1303],
         extensions: vec![0x0000, 0x000B, 0x0010],
+        traffic_profile: None,
     });
 
     for raw_line in source.lines() {
@@ -168,6 +170,9 @@ fn parse_override(name: &str, source: &str) -> Result<StealthProfile, ProfileErr
                     parse_u16_list(value).map_err(|_| ProfileError::InvalidProfile {
                         field: String::from("cipher_suites"),
                     })?;
+            }
+            "traffic_profile" => {
+                profile.traffic_profile = Some(String::from(value));
             }
             "extensions" => {
                 profile.extensions =
