@@ -210,7 +210,7 @@ mod ring {
             let tail = self.sq_tail.read_volatile();
             let head = self.sq_head.read_volatile();
 
-            if tail.wrapping_sub(head) >= self.sq_mask + 1 {
+            if tail.wrapping_sub(head) > self.sq_mask {
                 return false;
             }
 
