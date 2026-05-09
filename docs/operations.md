@@ -233,7 +233,7 @@ apate gen-key
 Output:
 
 ```
-public_key=3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29
+public_key=3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29a
 ```
 
 The 32-byte secret seed used internally to derive this public key must be
@@ -329,11 +329,13 @@ event code=<event_code> detail=<key=value pairs>
 | `loss_observed`      | Packet loss was detected by `transport::loss`.                   |
 | `auth_rejected`      | An inbound authentication attempt was rejected.                  |
 
-Example:
+Examples:
 
 ```
-event code=startup detail=mode=client server=203.0.113.1:443 transport=auto
-event code=handshake_success detail=peer=203.0.113.1:443 epoch=0
+event code=startup detail=mode=client server=203.0.113.1:443 transport=auto backend=kqueue
+event code=startup detail=mode=server listen=0.0.0.0:443 auth=[static_key] backend=epoll facade=true
+event code=startup detail=mode=server-quic listen=0.0.0.0:443 backend=epoll
+event code=handshake_success detail=transport=UdpTls endpoint=203.0.113.1:443
 event code=fallback_triggered detail=count=1
 ```
 
@@ -351,11 +353,11 @@ Runtime errors that cause process exit are written to stderr as:
 event code=startup detail=state=error reason=<error message>
 ```
 
-Config parse and validation errors appear as:
+Config parse and validation errors are wrapped in the event envelope:
 
 ```
-config parse error: missing required configuration key: client.server
-config validation error: invalid configuration value for key: transport.fallback_timeout
+event code=startup detail=state=error reason=config parse error: unsupported configuration key: unknown.key
+event code=startup detail=state=error reason=config validation error: missing required configuration key: client.server
 ```
 
 ---
@@ -443,7 +445,7 @@ apate version
 Output:
 
 ```
-apate 0.1.0
+apate 1.0.0
 ```
 
 The version string is taken from `CARGO_PKG_VERSION` at compile time. If the
@@ -722,6 +724,9 @@ Restart=on-failure
 RestartSec=10s
 AmbientCapabilities=CAP_NET_ADMIN
 NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/dev/net/tun
 
 [Install]
 WantedBy=multi-user.target
@@ -752,6 +757,10 @@ cat > /Library/LaunchDaemons/com.apate.client.plist << 'EOF'
     <true/>
     <key>KeepAlive</key>
     <true/>
+    <key>StandardOutPath</key>
+    <string>/var/log/apate.log</string>
+    <key>StandardErrorPath</key>
+    <string>/var/log/apate.log</string>
 </dict>
 </plist>
 EOF
@@ -772,7 +781,7 @@ On both the server and the client:
 
 ```sh
 apate gen-key
-# Output: public_key=3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29
+# Output: public_key=3b6a27bcceb6a42d62a3a8d02a6f0d73653215771de243a63ac048a18b59da29a
 ```
 
 The `gen-key` command generates a random 32-byte secret key using OS

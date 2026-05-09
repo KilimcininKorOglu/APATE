@@ -85,7 +85,7 @@ Apate uses a key-value configuration file:
 client.server = "203.0.113.10:443"
 auth.methods = ["static_key"]
 transport.mode = "auto"
-transport.fallback_timeout_secs = 3
+transport.fallback_timeout = 3
 routing.mode = "full"
 dns.mode = "doh"
 stealth.profile = "chrome_131"
@@ -97,7 +97,7 @@ server.listen = "0.0.0.0:443"
 
 | Mode         | Config Value   | Description                                      |
 |--------------|----------------|--------------------------------------------------|
-| Automatic    | `auto`         | Try UDP first, fall back to TCP, then QUIC        |
+| Automatic    | `auto`         | Try UDP first, fall back to TCP on timeout        |
 | UDP only     | `udp`          | Direct UDP-over-TLS                               |
 | TCP only     | `tcp`          | TCP-over-TLS (traverses restrictive firewalls)    |
 | QUIC         | `quic_mask`    | Full QUIC protocol (RFC 9000, AEAD, header protection) |
