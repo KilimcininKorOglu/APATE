@@ -1,11 +1,12 @@
 use crate::tunnel::{TunnelAdapter, TunnelError, TunnelPacket};
 use std::collections::VecDeque;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WindowsTunAdapter {
     name: String,
     mtu: u16,
     opened: bool,
+    #[cfg(target_os = "windows")]
+    handle: Option<isize>,
     loopback_queue: VecDeque<TunnelPacket>,
 }
 
@@ -15,6 +16,8 @@ impl WindowsTunAdapter {
             name,
             mtu: 1500,
             opened: false,
+            #[cfg(target_os = "windows")]
+            handle: None,
             loopback_queue: VecDeque::new(),
         }
     }
@@ -25,7 +28,6 @@ impl TunnelAdapter for WindowsTunAdapter {
         if !self.name.starts_with("wintun") && !self.name.starts_with("apate") {
             return Err(TunnelError::OpenFailed);
         }
-
         self.opened = true;
         Ok(())
     }
@@ -34,7 +36,6 @@ impl TunnelAdapter for WindowsTunAdapter {
         if !self.opened || !(576..=9000).contains(&mtu) {
             return Err(TunnelError::ConfigureFailed);
         }
-
         self.mtu = mtu;
         Ok(())
     }
@@ -43,7 +44,6 @@ impl TunnelAdapter for WindowsTunAdapter {
         if !self.opened {
             return Err(TunnelError::Io);
         }
-
         Ok(self.loopback_queue.pop_front())
     }
 
@@ -54,7 +54,6 @@ impl TunnelAdapter for WindowsTunAdapter {
         if packet.as_bytes().len() > usize::from(self.mtu) {
             return Err(TunnelError::InvalidPacket);
         }
-
         self.loopback_queue.push_back(packet);
         Ok(())
     }

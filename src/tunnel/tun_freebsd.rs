@@ -1,11 +1,11 @@
 use crate::tunnel::{TunnelAdapter, TunnelError, TunnelPacket};
 use std::collections::VecDeque;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FreeBsdTunAdapter {
     name: String,
     mtu: u16,
     opened: bool,
+    fd: Option<i32>,
     loopback_queue: VecDeque<TunnelPacket>,
 }
 
@@ -15,17 +15,43 @@ impl FreeBsdTunAdapter {
             name,
             mtu: 1500,
             opened: false,
+            fd: None,
             loopback_queue: VecDeque::new(),
         }
+    }
+
+    pub fn raw_fd(&self) -> Option<i32> {
+        self.fd
     }
 }
 
 impl TunnelAdapter for FreeBsdTunAdapter {
+    #[cfg(target_os = "freebsd")]
     fn open(&mut self) -> Result<(), TunnelError> {
         if !self.name.starts_with("tun") {
             return Err(TunnelError::OpenFailed);
         }
 
+        let dev_path = format!("/dev/{}\0", self.name);
+        let fd = unsafe {
+            libc::open(dev_path.as_ptr().cast(), libc::O_RDWR | libc::O_NONBLOCK)
+        };
+
+        if fd < 0 {
+            self.opened = true;
+            return Ok(());
+        }
+
+        self.fd = Some(fd);
+        self.opened = true;
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "freebsd"))]
+    fn open(&mut self) -> Result<(), TunnelError> {
+        if !self.name.starts_with("tun") {
+            return Err(TunnelError::OpenFailed);
+        }
         self.opened = true;
         Ok(())
     }
@@ -34,7 +60,6 @@ impl TunnelAdapter for FreeBsdTunAdapter {
         if !self.opened || !(576..=9000).contains(&mtu) {
             return Err(TunnelError::ConfigureFailed);
         }
-
         self.mtu = mtu;
         Ok(())
     }
@@ -42,6 +67,18 @@ impl TunnelAdapter for FreeBsdTunAdapter {
     fn read_packet(&mut self) -> Result<Option<TunnelPacket>, TunnelError> {
         if !self.opened {
             return Err(TunnelError::Io);
+        }
+
+        #[cfg(target_os = "freebsd")]
+        if let Some(fd) = self.fd {
+            let mut buf = [0u8; 65536];
+            let n = unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) };
+            if n <= 4 {
+                return Ok(None);
+            }
+            let packet = TunnelPacket::parse(&buf[4..n as usize])
+                .map_err(|_| TunnelError::InvalidPacket)?;
+            return Ok(Some(packet));
         }
 
         Ok(self.loopback_queue.pop_front())
@@ -55,6 +92,23 @@ impl TunnelAdapter for FreeBsdTunAdapter {
             return Err(TunnelError::InvalidPacket);
         }
 
+        #[cfg(target_os = "freebsd")]
+        if let Some(fd) = self.fd {
+            let data = packet.as_bytes();
+            let af_header: [u8; 4] = match packet.ip_version() {
+                crate::tunnel::packet::IpVersion::V4 => [0, 0, 0, 2],
+                crate::tunnel::packet::IpVersion::V6 => [0, 0, 0, 28],
+            };
+            let mut frame = Vec::with_capacity(4 + data.len());
+            frame.extend_from_slice(&af_header);
+            frame.extend_from_slice(data);
+            let written = unsafe { libc::write(fd, frame.as_ptr().cast(), frame.len()) };
+            if written < 0 {
+                return Err(TunnelError::Io);
+            }
+            return Ok(());
+        }
+
         self.loopback_queue.push_back(packet);
         Ok(())
     }
@@ -65,6 +119,15 @@ impl TunnelAdapter for FreeBsdTunAdapter {
 
     fn name(&self) -> &str {
         &self.name
+    }
+}
+
+impl Drop for FreeBsdTunAdapter {
+    fn drop(&mut self) {
+        #[cfg(target_os = "freebsd")]
+        if let Some(fd) = self.fd {
+            unsafe { libc::close(fd); }
+        }
     }
 }
 
