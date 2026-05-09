@@ -48,8 +48,9 @@ impl RuntimeBackend for EpollBackend {
 
     #[cfg(not(target_os = "linux"))]
     fn initialize(&mut self) -> Result<(), RuntimeError> {
-        self.initialized = true;
-        Ok(())
+        Err(RuntimeError::BackendUnavailable {
+            backend: String::from("epoll"),
+        })
     }
 
     #[cfg(target_os = "linux")]
@@ -157,13 +158,18 @@ mod tests {
     use crate::runtime::backend::epoll::EpollBackend;
 
     #[test]
-    fn epoll_initializes_successfully() {
+    fn epoll_initialization_is_platform_gated() {
         let mut backend = EpollBackend::new();
-        assert!(backend.initialize().is_ok());
+        let result = backend.initialize();
 
-        let mut events = Vec::new();
-        assert!(backend.poll(&mut events).is_ok());
-        assert!(events.is_empty());
+        if cfg!(target_os = "linux") {
+            assert!(result.is_ok());
+            let mut events = Vec::new();
+            assert!(backend.poll(&mut events).is_ok());
+            assert!(events.is_empty());
+        } else {
+            assert!(result.is_err());
+        }
     }
 
     #[cfg(target_os = "linux")]
