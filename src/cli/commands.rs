@@ -37,6 +37,7 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
     use crate::runtime::Runtime;
     use crate::runtime::backend::FdInterest;
     use crate::stealth::decoy::DecoyStreamGenerator;
+    use crate::stealth::session_rotation::SessionRotator;
     use crate::stealth::traffic_shaping::TrafficShapingEngine;
     use crate::transport::connection::TransportEngine;
     use crate::transport::mode::ModeNegotiator;
@@ -133,6 +134,8 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
         .unwrap_or_else(|| String::from("chrome_h3"));
     let mut shaping_engine = TrafficShapingEngine::from_profile_name(&traffic_profile_name);
     let mut decoy_gen = DecoyStreamGenerator::new(true);
+    let mut session_rotator = SessionRotator::new(900, 2700);
+    session_rotator.start(runtime.timer_wheel.now_ms());
 
     if let Some(transport_fd) = engine.active_raw_fd() {
         runtime
@@ -162,6 +165,21 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
 
         if let Some(decoy) = decoy_gen.should_inject_decoy() {
             let _ = engine.send_payload(decoy.data);
+        }
+
+        if session_rotator.should_rotate(runtime.timer_wheel.now_ms()) {
+            println!(
+                "{}",
+                format_event(
+                    EventCode::RuntimeReady,
+                    &format!(
+                        "session-rotate count={}",
+                        session_rotator.rotation_count() + 1,
+                    ),
+                ),
+            );
+            let _ = engine.rekey();
+            session_rotator.on_rotated(runtime.timer_wheel.now_ms(), 900, 2700);
         }
 
         if let Some(frame) = engine.recv_frame().map_err(|e| e.to_string())?
@@ -602,6 +620,7 @@ fn build_server_quic_config()
 fn run_server_quic(args: &CliArgs) -> Result<(), String> {
     use crate::runtime::Runtime;
     use crate::runtime::backend::FdInterest;
+    use crate::stealth::session_rotation::SessionRotator;
     use quinn_proto::{DatagramEvent, Endpoint, EndpointConfig, Event, StreamEvent};
     use std::net::SocketAddr;
     use std::sync::Arc;
@@ -639,6 +658,9 @@ fn run_server_quic(args: &CliArgs) -> Result<(), String> {
         true,
         None,
     );
+
+    let mut cert_rotator = SessionRotator::new(3600, 7200);
+    cert_rotator.start(runtime.timer_wheel.now_ms());
 
     println!(
         "{}",
@@ -787,6 +809,23 @@ fn run_server_quic(args: &CliArgs) -> Result<(), String> {
                     _ => {}
                 }
             }
+        }
+
+        if cert_rotator.should_rotate(runtime.timer_wheel.now_ms()) {
+            if let Ok((new_server_config, _)) = build_server_quic_config() {
+                endpoint.set_server_config(Some(Arc::new(new_server_config)));
+                println!(
+                    "{}",
+                    format_event(
+                        EventCode::RuntimeReady,
+                        &format!(
+                            "cert-rotate count={}",
+                            cert_rotator.rotation_count() + 1,
+                        ),
+                    ),
+                );
+            }
+            cert_rotator.on_rotated(runtime.timer_wheel.now_ms(), 3600, 7200);
         }
     }
 }
