@@ -1,16 +1,21 @@
 use apate::config::parser::parse_config;
 use apate::transport::connection::TransportEngine;
 use apate::transport::mode::{ModeNegotiator, TransportKind};
+use apate::transport::quic_mask::{QuicMaskConnectPolicy, QuicMaskTransport};
 use apate::transport::tcp_tls::{TcpConnectPolicy, TcpTlsTransport};
 use apate::transport::udp_tls::{UdpConnectPolicy, UdpTlsTransport};
 use apate::util::{ConnectionState, TransportMode};
+
+fn default_quic() -> QuicMaskTransport {
+    QuicMaskTransport::new(QuicMaskConnectPolicy::Success)
+}
 
 #[test]
 fn auto_mode_uses_tcp_after_udp_timeout() {
     let negotiator = ModeNegotiator::new(TransportMode::Auto, 3);
     let udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
     let tcp = TcpTlsTransport::new(TcpConnectPolicy::Success);
-    let mut engine = TransportEngine::new(negotiator, udp, tcp);
+    let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
 
     engine.establish().expect("auto fallback establish");
 
@@ -24,7 +29,7 @@ fn forced_tcp_mode_skips_udp_attempt() {
     let negotiator = ModeNegotiator::new(TransportMode::Tcp, 3);
     let udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
     let tcp = TcpTlsTransport::new(TcpConnectPolicy::Success);
-    let mut engine = TransportEngine::new(negotiator, udp, tcp);
+    let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
 
     engine.establish().expect("forced tcp establish");
 
@@ -38,7 +43,7 @@ fn forced_quic_mask_mode_uses_quic_transport_path() {
     let negotiator = ModeNegotiator::new(TransportMode::QuicMask, 3);
     let udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
     let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
-    let mut engine = TransportEngine::new(negotiator, udp, tcp);
+    let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
 
     engine.establish().expect("forced quic establish");
     let sequence = engine
@@ -94,6 +99,7 @@ fn transport_mode_config_permutations_drive_expected_negotiation() {
             negotiator,
             UdpTlsTransport::new(udp_policy),
             TcpTlsTransport::new(tcp_policy),
+            default_quic(),
         );
         engine
             .establish()

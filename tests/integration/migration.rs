@@ -1,16 +1,21 @@
 use apate::transport::connection::TransportEngine;
 use apate::transport::mode::ModeNegotiator;
+use apate::transport::quic_mask::{QuicMaskConnectPolicy, QuicMaskTransport};
 use apate::transport::tcp_tls::{TcpConnectPolicy, TcpTlsTransport};
 use apate::transport::udp_tls::{UdpConnectPolicy, UdpTlsTransport};
 use apate::transport::{FrameError, TransportError};
 use apate::util::{ConnectionState, TransportMode};
+
+fn default_quic() -> QuicMaskTransport {
+    QuicMaskTransport::new(QuicMaskConnectPolicy::Success)
+}
 
 #[test]
 fn rekey_preserves_established_session_traffic_flow() {
     let negotiator = ModeNegotiator::new(TransportMode::Udp, 3);
     let udp = UdpTlsTransport::new(UdpConnectPolicy::Success);
     let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
-    let mut engine = TransportEngine::new(negotiator, udp, tcp);
+    let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
     engine.establish().expect("establish");
 
     let first = engine
@@ -32,7 +37,7 @@ fn migration_rejects_invalid_proof_and_accepts_valid_proof() {
     let negotiator = ModeNegotiator::new(TransportMode::Udp, 3);
     let udp = UdpTlsTransport::new(UdpConnectPolicy::Success);
     let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
-    let mut engine = TransportEngine::new(negotiator, udp, tcp);
+    let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
     engine.establish().expect("establish");
     let initial_endpoint = String::from(engine.endpoint());
     let next_endpoint = String::from("203.0.113.50:443");
@@ -62,7 +67,7 @@ fn migration_proof_is_bound_to_target_endpoint() {
     let negotiator = ModeNegotiator::new(TransportMode::Udp, 3);
     let udp = UdpTlsTransport::new(UdpConnectPolicy::Success);
     let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
-    let mut engine = TransportEngine::new(negotiator, udp, tcp);
+    let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
     engine.establish().expect("establish");
     let endpoint_a = String::from("203.0.113.60:443");
     let endpoint_b = String::from("203.0.113.61:443");

@@ -5,8 +5,13 @@ use apate::transport::connection::TransportEngine;
 use apate::transport::loss::LossDetector;
 use apate::transport::mode::ModeNegotiator;
 use apate::transport::pacing::PacingScheduler;
+use apate::transport::quic_mask::{QuicMaskConnectPolicy, QuicMaskTransport};
 use apate::transport::tcp_tls::{TcpConnectPolicy, TcpTlsTransport};
 use apate::transport::udp_tls::{UdpConnectPolicy, UdpTlsTransport};
+
+fn default_quic() -> QuicMaskTransport {
+    QuicMaskTransport::new(QuicMaskConnectPolicy::Success)
+}
 use apate::tunnel::{LinuxTunAdapter, MacOsTunAdapter, TunnelAdapter, TunnelPacket};
 use apate::util::TransportMode;
 use apate::{
@@ -140,7 +145,7 @@ fn adaptive_fec_enables_parity_under_loss_and_disables_in_tcp_mode() {
     let negotiator = ModeNegotiator::new(TransportMode::Udp, 3);
     let udp = UdpTlsTransport::new(UdpConnectPolicy::Success);
     let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
-    let mut udp_engine = TransportEngine::new(negotiator, udp, tcp);
+    let mut udp_engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
     udp_engine.establish().expect("udp establish");
     udp_engine.update_observed_loss(0.22);
 
@@ -152,7 +157,8 @@ fn adaptive_fec_enables_parity_under_loss_and_disables_in_tcp_mode() {
     let tcp_negotiator = ModeNegotiator::new(TransportMode::Tcp, 3);
     let tcp_udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
     let tcp_transport = TcpTlsTransport::new(TcpConnectPolicy::Success);
-    let mut tcp_engine = TransportEngine::new(tcp_negotiator, tcp_udp, tcp_transport);
+    let mut tcp_engine =
+        TransportEngine::new(tcp_negotiator, tcp_udp, tcp_transport, default_quic());
     tcp_engine.establish().expect("tcp establish");
     tcp_engine.update_observed_loss(0.30);
 

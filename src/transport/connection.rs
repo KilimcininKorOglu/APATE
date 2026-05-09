@@ -6,7 +6,7 @@ use crate::noise::handshake::{HandshakeMachine, HandshakeMessage};
 use crate::transport::fec::{FecController, FecMode};
 use crate::transport::mode::{AttemptOutcome, ModeNegotiator, TransportKind};
 use crate::transport::pacing::CompressionPolicy;
-use crate::transport::quic_mask::{QuicMaskConnectPolicy, QuicMaskTransport};
+use crate::transport::quic_mask::QuicMaskTransport;
 use crate::transport::tcp_tls::TcpTlsTransport;
 use crate::transport::udp_tls::UdpTlsTransport;
 use crate::transport::{Frame, FrameError, FrameType, TransportError, TransportStrategy};
@@ -45,7 +45,12 @@ impl TransportEngine {
         }
     }
 
-    pub fn new(negotiator: ModeNegotiator, udp: UdpTlsTransport, tcp: TcpTlsTransport) -> Self {
+    pub fn new(
+        negotiator: ModeNegotiator,
+        udp: UdpTlsTransport,
+        tcp: TcpTlsTransport,
+        quic: QuicMaskTransport,
+    ) -> Self {
         let active_kind = negotiator.initial_kind();
         let mut session_id = [0u8; 16];
         let seed = os_seed();
@@ -66,7 +71,7 @@ impl TransportEngine {
             compression_policy: CompressionPolicy::default(),
             udp,
             tcp,
-            quic: QuicMaskTransport::new(QuicMaskConnectPolicy::Success),
+            quic,
             handshake: None,
         }
     }
@@ -277,16 +282,21 @@ mod tests {
     use crate::transport::FecMode;
     use crate::transport::connection::TransportEngine;
     use crate::transport::mode::{ModeNegotiator, TransportKind};
+    use crate::transport::quic_mask::{QuicMaskConnectPolicy, QuicMaskTransport};
     use crate::transport::tcp_tls::{TcpConnectPolicy, TcpTlsTransport};
     use crate::transport::udp_tls::{UdpConnectPolicy, UdpTlsTransport};
     use crate::util::{ConnectionState, TransportMode};
+
+    fn default_quic() -> QuicMaskTransport {
+        QuicMaskTransport::new(QuicMaskConnectPolicy::Success)
+    }
 
     #[test]
     fn auto_mode_falls_back_to_tcp_when_udp_times_out() {
         let negotiator = ModeNegotiator::new(TransportMode::Auto, 3);
         let udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
         let tcp = TcpTlsTransport::new(TcpConnectPolicy::Success);
-        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
 
         engine.establish().expect("auto fallback establish");
 
@@ -300,7 +310,7 @@ mod tests {
         let negotiator = ModeNegotiator::new(TransportMode::Auto, 3);
         let udp = UdpTlsTransport::new(UdpConnectPolicy::Failure);
         let tcp = TcpTlsTransport::new(TcpConnectPolicy::Success);
-        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
 
         engine.establish().expect("auto fallback establish");
 
@@ -314,7 +324,7 @@ mod tests {
         let negotiator = ModeNegotiator::new(TransportMode::Auto, 3);
         let udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
         let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
-        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
 
         let result = engine.establish();
 
@@ -329,7 +339,7 @@ mod tests {
         let negotiator = ModeNegotiator::new(TransportMode::Udp, 3);
         let udp = UdpTlsTransport::new(UdpConnectPolicy::Success);
         let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
-        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
 
         engine.establish().expect("forced udp establish");
 
@@ -343,7 +353,7 @@ mod tests {
         let negotiator = ModeNegotiator::new(TransportMode::QuicMask, 3);
         let udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
         let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
-        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
 
         engine.establish().expect("forced quic establish");
 
@@ -357,7 +367,7 @@ mod tests {
         let negotiator = ModeNegotiator::new(TransportMode::Udp, 3);
         let udp = UdpTlsTransport::new(UdpConnectPolicy::Success);
         let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
-        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
         engine.establish().expect("establish");
 
         let epoch = engine.rekey().expect("rekey");
@@ -371,7 +381,7 @@ mod tests {
         let negotiator = ModeNegotiator::new(TransportMode::Udp, 3);
         let udp = UdpTlsTransport::new(UdpConnectPolicy::Success);
         let tcp = TcpTlsTransport::new(TcpConnectPolicy::Failure);
-        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
         engine.establish().expect("establish");
         let next_endpoint = String::from("198.51.100.20:443");
         let proof = engine.migration_proof(&next_endpoint);
@@ -389,7 +399,7 @@ mod tests {
         let negotiator = ModeNegotiator::new(TransportMode::Tcp, 3);
         let udp = UdpTlsTransport::new(UdpConnectPolicy::Timeout);
         let tcp = TcpTlsTransport::new(TcpConnectPolicy::Success);
-        let mut engine = TransportEngine::new(negotiator, udp, tcp);
+        let mut engine = TransportEngine::new(negotiator, udp, tcp, default_quic());
         engine.establish().expect("tcp establish");
 
         engine.update_observed_loss(0.35);
