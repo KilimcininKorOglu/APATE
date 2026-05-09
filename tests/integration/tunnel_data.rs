@@ -5,12 +5,12 @@ use apate::transport::connection::TransportEngine;
 use apate::transport::loss::LossDetector;
 use apate::transport::mode::ModeNegotiator;
 use apate::transport::pacing::PacingScheduler;
-use apate::transport::quic_mask::{QuicMaskConnectPolicy, QuicMaskTransport};
+use apate::transport::quic_mask::{QuicMaskConnectPolicy, QuicTransport};
 use apate::transport::tcp_tls::{TcpConnectPolicy, TcpTlsTransport};
 use apate::transport::udp_tls::{UdpConnectPolicy, UdpTlsTransport};
 
-fn default_quic() -> QuicMaskTransport {
-    QuicMaskTransport::new(QuicMaskConnectPolicy::Success)
+fn default_quic() -> QuicTransport {
+    QuicTransport::new(QuicMaskConnectPolicy::Success)
 }
 use apate::tunnel::{LinuxTunAdapter, MacOsTunAdapter, TunnelAdapter, TunnelPacket};
 use apate::util::TransportMode;

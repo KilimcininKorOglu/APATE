@@ -6,14 +6,13 @@ use crate::noise::handshake::{HandshakeMachine, HandshakeMessage};
 use crate::transport::fec::{FecController, FecMode};
 use crate::transport::mode::{AttemptOutcome, ModeNegotiator, TransportKind};
 use crate::transport::pacing::CompressionPolicy;
-use crate::transport::quic_mask::QuicMaskTransport;
+use crate::transport::quic_mask::QuicTransport;
 use crate::transport::tcp_tls::TcpTlsTransport;
 use crate::transport::udp_tls::UdpTlsTransport;
 use crate::transport::{Frame, FrameError, FrameType, TransportError, TransportStrategy};
 use crate::util::ConnectionState;
 use core::time::Duration;
 
-#[derive(Debug, Clone, PartialEq)]
 pub struct TransportEngine {
     state: ConnectionState,
     sequence: u64,
@@ -28,7 +27,7 @@ pub struct TransportEngine {
     compression_policy: CompressionPolicy,
     udp: UdpTlsTransport,
     tcp: TcpTlsTransport,
-    quic: QuicMaskTransport,
+    quic: QuicTransport,
     handshake: Option<HandshakeMachine>,
 }
 
@@ -49,7 +48,7 @@ impl TransportEngine {
         negotiator: ModeNegotiator,
         udp: UdpTlsTransport,
         tcp: TcpTlsTransport,
-        quic: QuicMaskTransport,
+        quic: QuicTransport,
     ) -> Self {
         let active_kind = negotiator.initial_kind();
         let mut session_id = [0u8; 16];
@@ -282,13 +281,13 @@ mod tests {
     use crate::transport::FecMode;
     use crate::transport::connection::TransportEngine;
     use crate::transport::mode::{ModeNegotiator, TransportKind};
-    use crate::transport::quic_mask::{QuicMaskConnectPolicy, QuicMaskTransport};
+    use crate::transport::quic_mask::{QuicMaskConnectPolicy, QuicTransport};
     use crate::transport::tcp_tls::{TcpConnectPolicy, TcpTlsTransport};
     use crate::transport::udp_tls::{UdpConnectPolicy, UdpTlsTransport};
     use crate::util::{ConnectionState, TransportMode};
 
-    fn default_quic() -> QuicMaskTransport {
-        QuicMaskTransport::new(QuicMaskConnectPolicy::Success)
+    fn default_quic() -> QuicTransport {
+        QuicTransport::new(QuicMaskConnectPolicy::Success)
     }
 
     #[test]

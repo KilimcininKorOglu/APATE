@@ -38,7 +38,7 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
     use crate::runtime::backend::FdInterest;
     use crate::transport::connection::TransportEngine;
     use crate::transport::mode::ModeNegotiator;
-    use crate::transport::quic_mask::{QuicMaskConnectPolicy, QuicMaskTransport};
+    use crate::transport::quic_mask::{QuicMaskConnectPolicy, QuicTransport};
     use crate::transport::tcp_tls::{TcpConnectPolicy, TcpTlsTransport};
     use crate::transport::udp_tls::{UdpConnectPolicy, UdpTlsTransport};
     use crate::tunnel::TunnelAdapter;
@@ -59,7 +59,7 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
     let mut tcp = TcpTlsTransport::new(TcpConnectPolicy::Success);
     tcp.set_endpoint(config.client.server.clone());
 
-    let mut quic = QuicMaskTransport::new(QuicMaskConnectPolicy::Success);
+    let mut quic = QuicTransport::new(QuicMaskConnectPolicy::Success);
     quic.set_endpoint(config.client.server.clone());
 
     let mut engine = TransportEngine::new(negotiator, udp, tcp, quic);

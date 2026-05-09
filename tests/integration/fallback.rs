@@ -1,13 +1,13 @@
 use apate::config::parser::parse_config;
 use apate::transport::connection::TransportEngine;
 use apate::transport::mode::{ModeNegotiator, TransportKind};
-use apate::transport::quic_mask::{QuicMaskConnectPolicy, QuicMaskTransport};
+use apate::transport::quic_mask::{QuicMaskConnectPolicy, QuicTransport};
 use apate::transport::tcp_tls::{TcpConnectPolicy, TcpTlsTransport};
 use apate::transport::udp_tls::{UdpConnectPolicy, UdpTlsTransport};
 use apate::util::{ConnectionState, TransportMode};
 
-fn default_quic() -> QuicMaskTransport {
-    QuicMaskTransport::new(QuicMaskConnectPolicy::Success)
+fn default_quic() -> QuicTransport {
+    QuicTransport::new(QuicMaskConnectPolicy::Success)
 }
 
 #[test]
