@@ -261,10 +261,8 @@ impl QuicTransport {
                     Event::Connected => {
                         self.connected = true;
                     }
-                    Event::Stream(StreamEvent::Readable { id }) => {
-                        if self.stream_id.is_none() {
-                            self.stream_id = Some(id);
-                        }
+                    Event::Stream(StreamEvent::Readable { id }) if self.stream_id.is_none() => {
+                        self.stream_id = Some(id);
                     }
                     _ => {}
                 }
