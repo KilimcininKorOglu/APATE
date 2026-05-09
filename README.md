@@ -18,18 +18,32 @@ When a DPI system probes the server, a facade responder returns plausible HTTP r
 
 ## Features
 
+### Transport and Encryption
+
 - **Transport Modes**: UDP-over-TLS, TCP-over-TLS, and QUIC (RFC 9000 compliant via quinn-proto)
 - **Automatic Fallback**: Configurable transport negotiation with fallback chain (UDP -> TCP -> QUIC)
 - **Noise Protocol**: X25519 Diffie-Hellman key exchange, Ed25519 authentication, ChaCha20-Poly1305 / AES-256-GCM dual AEAD
-- **Browser Fingerprinting**: TLS ClientHello profiles matching Chrome 131, Firefox 130, Safari 18
-- **Probe Deflection**: Facade responder serves realistic HTTP responses to DPI probes
+- **Forward Error Correction**: Adaptive single/double parity FEC for lossy links
+- **Connection Migration**: Cryptographic migration proofs for endpoint changes
+- **Post-Quantum Ready**: ML-KEM-768 key encapsulation available alongside X25519
+
+### DPI Evasion
+
+- **Traffic Shaping**: Markov chain state machine models real browser traffic patterns (Idle, PageLoad, Streaming, Interactive, BurstDownload). Each state has its own packet size histogram and inter-arrival time distribution matching Chrome HTTP/3 or Firefox HTTP/3 profiles.
+- **Asymmetric Padding**: Direction-aware padding applies more padding to download traffic (60%) than upload (10%) to match the asymmetric bandwidth ratios of real browser sessions. Padding bytes are random, not zero-filled.
+- **Decoy Stream Multiplexing**: In QUIC mode, fake HTTP/3 request and response streams are opened as unidirectional QUIC streams alongside real VPN data, making the multiplexed stream count match a real browser session.
+- **Chaff Traffic**: During idle periods, low-bandwidth fake packets are injected to eliminate the silence-burst pattern that DPI systems use for VPN detection.
+- **Session Rotation**: Connections are torn down and re-established at randomized intervals (15-45 minutes) with fresh session IDs and sequence counters, preventing long-lived connection fingerprinting.
+- **Server Certificate Rotation**: The QUIC server generates fresh self-signed certificates at randomized intervals (1-2 hours), preventing certificate fingerprinting across sessions.
+- **Browser Fingerprinting**: TLS ClientHello profiles matching Chrome 131, Firefox 130, Safari 18 with real cipher suite and extension lists.
+- **Probe Deflection**: Facade responder serves realistic HTTP responses to active DPI probes.
+
+### Platform and Operations
+
 - **Multi-Platform**: Linux (epoll, io_uring), macOS (kqueue, utun), Windows (IOCP, WinTUN), FreeBSD (kqueue)
 - **Multi-Auth**: Static key, token, and certificate authentication backends
 - **Split Tunneling**: Configurable routing with per-prefix tunnel/bypass decisions
 - **DNS Protection**: DoH forwarding, plain DNS, and fallback modes with leak prevention
-- **Forward Error Correction**: Adaptive single/double parity FEC for lossy links
-- **Connection Migration**: Cryptographic migration proofs for endpoint changes
-- **Post-Quantum Ready**: ML-KEM-768 key encapsulation available alongside X25519
 
 ## Building
 
@@ -90,11 +104,11 @@ server.listen = "0.0.0.0:443"
 
 ### Stealth Profiles
 
-| Profile        | Config Value     |
-|----------------|------------------|
-| Chrome 131     | `chrome_131`     |
-| Firefox 130    | `firefox_130`    |
-| Safari 18      | `safari_18`      |
+| Profile    | Config Value   | Traffic Profile | TLS Fingerprint         |
+|------------|----------------|-----------------|-------------------------|
+| Chrome 131 | `chrome_131`   | `chrome_h3`     | Chrome cipher suites    |
+| Firefox 130| `firefox_130`  | `firefox_h3`    | Firefox cipher suites   |
+| Safari 18  | `safari_18`    | `chrome_h3`     | Safari cipher suites    |
 
 ## Architecture
 
@@ -105,7 +119,7 @@ src/
   runtime/      Synchronous poll-based event loop (kqueue/epoll/io_uring/IOCP)
   noise/        Noise protocol handshake and symmetric state
   crypto/       AEAD, KDF, key exchange, signatures, RNG
-  stealth/      TLS camouflage, browser fingerprints, facade responder
+  stealth/      TLS camouflage, browser fingerprints, traffic shaping, decoy streams, facade responder
   auth/         Authentication coordinator and backends
   routing/      Split/full tunnel routing, DNS forwarding
   config/       Configuration parser and browser profiles
