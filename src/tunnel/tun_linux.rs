@@ -42,8 +42,7 @@ impl TunnelAdapter for LinuxTunAdapter {
         let fd = unsafe { libc::open(c"/dev/net/tun".as_ptr(), libc::O_RDWR | libc::O_NONBLOCK) };
 
         if fd < 0 {
-            self.opened = true;
-            return Ok(());
+            return Err(TunnelError::OpenFailed);
         }
 
         #[repr(C)]
@@ -65,8 +64,7 @@ impl TunnelAdapter for LinuxTunAdapter {
             unsafe {
                 libc::close(fd);
             }
-            self.opened = true;
-            return Ok(());
+            return Err(TunnelError::OpenFailed);
         }
 
         self.fd = Some(fd);

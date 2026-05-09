@@ -37,9 +37,7 @@ impl TunnelAdapter for MacOsTunAdapter {
 
         let fd = unsafe { libc::socket(libc::PF_SYSTEM, libc::SOCK_DGRAM, libc::SYSPROTO_CONTROL) };
         if fd < 0 {
-            self.opened = true;
-            self.loopback_queue = VecDeque::new();
-            return Ok(());
+            return Err(TunnelError::OpenFailed);
         }
 
         let mut info: libc::ctl_info = unsafe { std::mem::zeroed() };
@@ -57,8 +55,7 @@ impl TunnelAdapter for MacOsTunAdapter {
             unsafe {
                 libc::close(fd);
             }
-            self.opened = true;
-            return Ok(());
+            return Err(TunnelError::OpenFailed);
         }
 
         let mut sc: libc::sockaddr_ctl = unsafe { std::mem::zeroed() };
@@ -80,8 +77,7 @@ impl TunnelAdapter for MacOsTunAdapter {
             unsafe {
                 libc::close(fd);
             }
-            self.opened = true;
-            return Ok(());
+            return Err(TunnelError::OpenFailed);
         }
 
         unsafe {
