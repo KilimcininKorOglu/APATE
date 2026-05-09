@@ -35,6 +35,10 @@ pub fn parse_config(input: &str) -> Result<AppConfig, ConfigError> {
         config.client.server = parse_string_value(value);
     }
 
+    if let Some(value) = kv.get("server.listen") {
+        config.server.listen = parse_string_value(value);
+    }
+
     if let Some(value) = kv.get("transport.mode") {
         config.transport.mode =
             TransportMode::parse(&parse_string_value(value)).ok_or_else(|| {
@@ -151,6 +155,7 @@ fn is_supported_key(key: &str) -> bool {
     matches!(
         key,
         "client.server"
+            | "server.listen"
             | "transport.mode"
             | "transport.fallback_timeout"
             | "stealth.profile"

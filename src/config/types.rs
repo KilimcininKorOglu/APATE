@@ -56,6 +56,19 @@ pub struct ClientConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerConfig {
+    pub listen: String,
+}
+
+impl Default for ServerConfig {
+    fn default() -> Self {
+        Self {
+            listen: String::from("0.0.0.0:443"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransportConfig {
     pub mode: TransportMode,
     pub fallback_timeout_secs: u16,
@@ -136,6 +149,7 @@ impl Default for DnsConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct AppConfig {
     pub client: ClientConfig,
+    pub server: ServerConfig,
     pub transport: TransportConfig,
     pub stealth: StealthConfig,
     pub auth: AuthConfig,
@@ -146,9 +160,9 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
-        if self.client.server.trim().is_empty() {
+        if self.client.server.trim().is_empty() && self.server.listen.trim().is_empty() {
             return Err(ConfigError::MissingRequiredKey {
-                key: String::from("client.server"),
+                key: String::from("client.server or server.listen"),
             });
         }
 
@@ -170,7 +184,7 @@ impl AppConfig {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::types::{AppConfig, AuthConfig, ClientConfig, DnsMode, RoutingMode};
+    use crate::config::types::{AppConfig, AuthConfig, ClientConfig, DnsMode, RoutingMode, ServerConfig};
     use crate::util::{AuthMethod, TransportMode};
 
     #[test]
@@ -194,6 +208,9 @@ mod tests {
         let config = AppConfig {
             client: ClientConfig {
                 server: String::new(),
+            },
+            server: ServerConfig {
+                listen: String::new(),
             },
             transport: Default::default(),
             stealth: Default::default(),
