@@ -1,6 +1,8 @@
 #[path = "migration.rs"]
 mod migration;
 
+use crate::crypto::rng::os_seed;
+use crate::noise::handshake::{HandshakeMachine, HandshakeMessage};
 use crate::transport::fec::{FecController, FecMode};
 use crate::transport::mode::{AttemptOutcome, ModeNegotiator, TransportKind};
 use crate::transport::pacing::CompressionPolicy;
@@ -27,6 +29,7 @@ pub struct TransportEngine {
     udp: UdpTlsTransport,
     tcp: TcpTlsTransport,
     quic: QuicMaskTransport,
+    handshake: Option<HandshakeMachine>,
 }
 
 impl TransportEngine {
@@ -44,6 +47,11 @@ impl TransportEngine {
 
     pub fn new(negotiator: ModeNegotiator, udp: UdpTlsTransport, tcp: TcpTlsTransport) -> Self {
         let active_kind = negotiator.initial_kind();
+        let mut session_id = [0u8; 16];
+        let seed = os_seed();
+        session_id.copy_from_slice(&seed[..16]);
+        let mut migration_secret = [0u8; 32];
+        migration_secret.copy_from_slice(&os_seed());
         Self {
             state: ConnectionState::Init,
             sequence: 0,
@@ -51,15 +59,20 @@ impl TransportEngine {
             fallback_count: 0,
             negotiator,
             active_kind,
-            session_id: [7_u8; 16],
-            migration_secret: [13_u8; 32],
+            session_id,
+            migration_secret,
             endpoint: String::from("127.0.0.1:443"),
             fec_controller: FecController::default(),
             compression_policy: CompressionPolicy::default(),
             udp,
             tcp,
             quic: QuicMaskTransport::new(QuicMaskConnectPolicy::Success),
+            handshake: None,
         }
+    }
+
+    pub fn set_handshake(&mut self, handshake: HandshakeMachine) {
+        self.handshake = Some(handshake);
     }
 
     pub fn state(&self) -> ConnectionState {
@@ -145,6 +158,7 @@ impl TransportEngine {
             match self.connect_kind(attempt_kind, timeout)? {
                 AttemptOutcome::Connected => {
                     self.active_kind = attempt_kind;
+                    self.run_handshake()?;
                     self.state = ConnectionState::Established;
                     return Ok(());
                 }
@@ -164,6 +178,21 @@ impl TransportEngine {
                 }
             }
         }
+    }
+
+    fn run_handshake(&mut self) -> Result<(), TransportError> {
+        let Some(ref mut machine) = self.handshake else {
+            return Ok(());
+        };
+
+        let local_pub = machine.local_ephemeral_public();
+        machine
+            .process(HandshakeMessage::ClientHello {
+                ephemeral_public: local_pub,
+            })
+            .map_err(|_| TransportError::NotConnected)?;
+
+        Ok(())
     }
 
     pub fn send_payload(&mut self, payload: Vec<u8>) -> Result<u64, TransportError> {

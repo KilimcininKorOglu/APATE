@@ -50,15 +50,36 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
 }
 
 fn run_server(args: &CliArgs) -> Result<(), String> {
+    use crate::auth::{ProbeGatePolicy, ProbeGateResult, evaluate_probe_gate};
+    use crate::runtime::Runtime;
+    use crate::stealth::facade::FacadeResponder;
+
     let config = load_config(args)?;
     let methods: Vec<&str> = config.auth.methods.iter().map(|m| m.as_str()).collect();
+
+    let mut runtime = Runtime::new();
+    runtime.start().map_err(|e| e.to_string())?;
+
+    let policy = ProbeGatePolicy {
+        facade_on_auth_failure: config.stealth.facade_on_auth_failure,
+    };
+    let facade = FacadeResponder::new(String::from("nginx"));
+
     println!(
         "{}",
         format_event(
             EventCode::Startup,
-            &format!("mode=server auth=[{}]", methods.join(","))
+            &format!(
+                "mode=server auth=[{}] backend={} facade={}",
+                methods.join(","),
+                runtime.backend_name(),
+                policy.facade_on_auth_failure,
+            )
         )
     );
+
+    let _ = (policy, facade, evaluate_probe_gate);
+    let _ = ProbeGateResult::Reject;
     Ok(())
 }
 
