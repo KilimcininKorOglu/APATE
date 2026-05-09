@@ -1,8 +1,10 @@
 pub mod client_hello;
+pub mod decoy;
 pub mod entropy;
 pub mod facade;
 pub mod padding;
 pub mod server_hello;
+pub mod session_rotation;
 pub mod timing;
 pub mod tls_camouflage;
 pub mod traffic_shaping;

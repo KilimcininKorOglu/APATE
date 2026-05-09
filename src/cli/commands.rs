@@ -36,6 +36,7 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
     use crate::noise::handshake::HandshakeMachine;
     use crate::runtime::Runtime;
     use crate::runtime::backend::FdInterest;
+    use crate::stealth::decoy::DecoyStreamGenerator;
     use crate::stealth::traffic_shaping::TrafficShapingEngine;
     use crate::transport::connection::TransportEngine;
     use crate::transport::mode::ModeNegotiator;
@@ -131,6 +132,7 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
         .and_then(|p| p.traffic_profile)
         .unwrap_or_else(|| String::from("chrome_h3"));
     let mut shaping_engine = TrafficShapingEngine::from_profile_name(&traffic_profile_name);
+    let mut decoy_gen = DecoyStreamGenerator::new(true);
 
     if let Some(transport_fd) = engine.active_raw_fd() {
         runtime
@@ -151,10 +153,15 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
         if let Some(packet) = tun.read_packet().map_err(|e| e.to_string())? {
             let shaped = shaping_engine.shape_packet(packet.as_bytes());
             let _ = engine.send_payload(shaped.payload);
+            decoy_gen.on_packet_sent();
         }
 
         if let Some(chaff) = shaping_engine.should_send_chaff() {
             let _ = engine.send_payload(chaff.payload);
+        }
+
+        if let Some(decoy) = decoy_gen.should_inject_decoy() {
+            let _ = engine.send_payload(decoy.data);
         }
 
         if let Some(frame) = engine.recv_frame().map_err(|e| e.to_string())?
