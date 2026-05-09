@@ -25,10 +25,22 @@ fn load_config(args: &CliArgs) -> Result<AppConfig, String> {
 
     let config = parse_config(&source).map_err(|e| format!("config parse error: {e}"))?;
 
-    config
-        .validate()
-        .map_err(|e| format!("config validation error: {e}"))?;
+    Ok(config)
+}
 
+fn load_client_config(args: &CliArgs) -> Result<AppConfig, String> {
+    let config = load_config(args)?;
+    config
+        .validate_client()
+        .map_err(|e| format!("config validation error: {e}"))?;
+    Ok(config)
+}
+
+fn load_server_config(args: &CliArgs) -> Result<AppConfig, String> {
+    let config = load_config(args)?;
+    config
+        .validate_server()
+        .map_err(|e| format!("config validation error: {e}"))?;
     Ok(config)
 }
 
@@ -46,7 +58,7 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
     use crate::transport::udp_tls::{UdpConnectPolicy, UdpTlsTransport};
     use crate::tunnel::TunnelAdapter;
 
-    let config = load_config(args)?;
+    let config = load_client_config(args)?;
 
     let mut runtime = Runtime::new();
     runtime.start().map_err(|e| e.to_string())?;
@@ -201,7 +213,7 @@ fn run_server(args: &CliArgs) -> Result<(), String> {
     use crate::util::{AuthMethod, TransportMode};
     use std::net::SocketAddr;
 
-    let config = load_config(args)?;
+    let config = load_server_config(args)?;
 
     if config.transport.mode == TransportMode::QuicMask {
         return run_server_quic(args);
@@ -626,7 +638,7 @@ fn run_server_quic(args: &CliArgs) -> Result<(), String> {
     use std::sync::Arc;
     use std::time::Instant;
 
-    let config = load_config(args)?;
+    let config = load_server_config(args)?;
 
     let mut runtime = Runtime::new();
     runtime.start().map_err(|e| e.to_string())?;

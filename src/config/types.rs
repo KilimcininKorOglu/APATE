@@ -160,9 +160,33 @@ pub struct AppConfig {
 
 impl AppConfig {
     pub fn validate(&self) -> Result<(), ConfigError> {
-        if self.client.server.trim().is_empty() && self.server.listen.trim().is_empty() {
+        if self.transport.fallback_timeout_secs == 0 {
+            return Err(ConfigError::InvalidValue {
+                key: String::from("transport.fallback_timeout"),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn validate_client(&self) -> Result<(), ConfigError> {
+        self.validate()?;
+
+        if self.client.server.trim().is_empty() {
             return Err(ConfigError::MissingRequiredKey {
-                key: String::from("client.server or server.listen"),
+                key: String::from("client.server"),
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn validate_server(&self) -> Result<(), ConfigError> {
+        self.validate()?;
+
+        if self.server.listen.trim().is_empty() {
+            return Err(ConfigError::MissingRequiredKey {
+                key: String::from("server.listen"),
             });
         }
 
@@ -172,21 +196,13 @@ impl AppConfig {
             });
         }
 
-        if self.transport.fallback_timeout_secs == 0 {
-            return Err(ConfigError::InvalidValue {
-                key: String::from("transport.fallback_timeout"),
-            });
-        }
-
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::config::types::{
-        AppConfig, AuthConfig, ClientConfig, DnsMode, RoutingMode, ServerConfig,
-    };
+    use crate::config::types::{AppConfig, AuthConfig, ClientConfig, DnsMode, RoutingMode};
     use crate::util::{AuthMethod, TransportMode};
 
     #[test]
@@ -206,26 +222,68 @@ mod tests {
     }
 
     #[test]
-    fn app_config_validation_enforces_required_fields() {
+    fn client_validation_requires_server_endpoint() {
         let config = AppConfig {
             client: ClientConfig {
                 server: String::new(),
             },
-            server: ServerConfig {
-                listen: String::new(),
+            ..Default::default()
+        };
+
+        assert!(config.validate_client().is_err());
+    }
+
+    #[test]
+    fn client_validation_passes_with_server_endpoint() {
+        let config = AppConfig {
+            client: ClientConfig {
+                server: String::from("1.2.3.4:443"),
             },
-            transport: Default::default(),
-            stealth: Default::default(),
+            ..Default::default()
+        };
+
+        assert!(config.validate_client().is_ok());
+    }
+
+    #[test]
+    fn server_validation_requires_auth_methods() {
+        let config = AppConfig {
+            auth: AuthConfig {
+                methods: Vec::new(),
+            },
+            ..Default::default()
+        };
+
+        assert!(config.validate_server().is_err());
+    }
+
+    #[test]
+    fn server_validation_passes_with_auth_methods() {
+        let config = AppConfig {
             auth: AuthConfig {
                 methods: vec![AuthMethod::StaticKey],
             },
-            crypto: Default::default(),
-            routing: Default::default(),
-            dns: Default::default(),
+            ..Default::default()
         };
 
+        assert!(config.validate_server().is_ok());
+    }
+
+    #[test]
+    fn base_validation_rejects_zero_timeout() {
+        let mut config = AppConfig::default();
+        config.transport.fallback_timeout_secs = 0;
+
         assert!(config.validate().is_err());
+    }
+
+    #[test]
+    fn defaults_use_expected_values() {
+        let config = AppConfig::default();
+
         assert_eq!(TransportMode::Auto, config.transport.mode);
         assert!(config.stealth.facade_on_auth_failure);
+        assert_eq!("0.0.0.0:443", config.server.listen);
+        assert_eq!("chrome_131", config.stealth.profile);
     }
 }
