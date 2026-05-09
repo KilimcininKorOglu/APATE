@@ -370,7 +370,7 @@ impl Drop for QuicTransport {
 }
 
 #[derive(Debug)]
-struct SkipServerVerification;
+pub struct SkipServerVerification;
 
 impl rustls::client::danger::ServerCertVerifier for SkipServerVerification {
     fn verify_server_cert(
