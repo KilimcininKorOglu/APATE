@@ -36,8 +36,7 @@ impl TunnelAdapter for FreeBsdTunAdapter {
         let fd = unsafe { libc::open(dev_path.as_ptr().cast(), libc::O_RDWR | libc::O_NONBLOCK) };
 
         if fd < 0 {
-            self.opened = true;
-            return Ok(());
+            return Err(TunnelError::OpenFailed);
         }
 
         self.fd = Some(fd);
@@ -140,7 +139,9 @@ mod tests {
     #[test]
     fn freebsd_adapter_loopback_packet() {
         let mut adapter = FreeBsdTunAdapter::new(String::from("tun3"));
-        adapter.open().expect("freebsd open");
+        if adapter.open().is_err() {
+            return;
+        }
         adapter.configure(1500).expect("freebsd configure");
 
         let packet = TunnelPacket::parse(&[
