@@ -162,17 +162,38 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     }
 
+    let mut pending_sends: std::collections::VecDeque<(u64, Vec<u8>)> =
+        std::collections::VecDeque::new();
+
     loop {
         runtime.tick().map_err(|e| e.to_string())?;
 
+        let now = runtime.timer_wheel.now_ms();
+        while let Some(&(deadline, _)) = pending_sends.front() {
+            if now >= deadline {
+                let (_, payload) = pending_sends.pop_front().unwrap();
+                let _ = engine.send_payload(payload);
+            } else {
+                break;
+            }
+        }
+
         if let Some(packet) = tun.read_packet().map_err(|e| e.to_string())? {
             let shaped = shaping_engine.shape_packet(packet.as_bytes());
-            let _ = engine.send_payload(shaped.payload);
+            let delay_ms = shaped.delay_us / 1000;
+            if delay_ms > 0 {
+                let deadline = runtime.timer_wheel.now_ms() + delay_ms;
+                pending_sends.push_back((deadline, shaped.payload));
+            } else {
+                let _ = engine.send_payload(shaped.payload);
+            }
             decoy_gen.on_packet_sent();
         }
 
         if let Some(chaff) = shaping_engine.should_send_chaff() {
-            let _ = engine.send_payload(chaff.payload);
+            let delay_ms = chaff.delay_us / 1000;
+            let deadline = runtime.timer_wheel.now_ms() + delay_ms;
+            pending_sends.push_back((deadline, chaff.payload));
         }
 
         if let Some(decoy) = decoy_gen.should_inject_decoy() {
@@ -632,7 +653,10 @@ fn build_server_quic_config()
 fn run_server_quic(args: &CliArgs) -> Result<(), String> {
     use crate::runtime::Runtime;
     use crate::runtime::backend::FdInterest;
+    use crate::stealth::decoy::DecoyStreamGenerator;
     use crate::stealth::session_rotation::SessionRotator;
+    use crate::stealth::traffic_shaping::TrafficShapingEngine;
+    use crate::tunnel::TunnelAdapter;
     use quinn_proto::{DatagramEvent, Endpoint, EndpointConfig, Event, StreamEvent};
     use std::net::SocketAddr;
     use std::sync::Arc;
@@ -685,6 +709,35 @@ fn run_server_quic(args: &CliArgs) -> Result<(), String> {
             ),
         ),
     );
+
+    #[cfg(target_os = "macos")]
+    let mut tun = crate::tunnel::MacOsTunAdapter::new(String::from("utun8"));
+    #[cfg(target_os = "linux")]
+    let mut tun = crate::tunnel::LinuxTunAdapter::new(String::from("apate0"));
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    let mut tun = crate::tunnel::LinuxTunAdapter::new(String::from("apate0"));
+
+    tun.open().map_err(|e| e.to_string())?;
+    tun.configure(1400).map_err(|e| e.to_string())?;
+
+    if let Some(tun_fd) = tun.raw_fd() {
+        runtime
+            .register_fd(
+                10,
+                tun_fd,
+                FdInterest {
+                    readable: true,
+                    writable: false,
+                },
+            )
+            .map_err(|e| e.to_string())?;
+    }
+
+    let traffic_profile_name = crate::config::profiles::builtin_profile(&config.stealth.profile)
+        .and_then(|p| p.traffic_profile)
+        .unwrap_or_else(|| String::from("chrome_h3"));
+    let mut shaping_engine = TrafficShapingEngine::from_profile_name(&traffic_profile_name);
+    let mut decoy_gen = DecoyStreamGenerator::new(true);
 
     let mut connections: Vec<(quinn_proto::ConnectionHandle, quinn_proto::Connection)> = Vec::new();
 
@@ -802,18 +855,10 @@ fn run_server_quic(args: &CliArgs) -> Result<(), String> {
                         let mut recv = conn.recv_stream(id);
                         if let Ok(mut chunks) = recv.read(true) {
                             while let Ok(Some(chunk)) = chunks.next(4096) {
-                                println!(
-                                    "{}",
-                                    format_event(
-                                        EventCode::RuntimeReady,
-                                        &format!(
-                                            "quic-data handle={} stream={} len={}",
-                                            handle.0,
-                                            id.index(),
-                                            chunk.bytes.len(),
-                                        ),
-                                    ),
-                                );
+                                if let Ok(packet) = crate::tunnel::TunnelPacket::parse(&chunk.bytes)
+                                {
+                                    let _ = tun.write_packet(packet);
+                                }
                             }
                             let _ = chunks.finalize();
                         }
@@ -821,6 +866,19 @@ fn run_server_quic(args: &CliArgs) -> Result<(), String> {
                     _ => {}
                 }
             }
+        }
+
+        if let Some(packet) = tun.read_packet().map_err(|e| e.to_string())? {
+            let shaped = shaping_engine.shape_packet(packet.as_bytes());
+            if let Some((_, conn)) = connections.first_mut()
+                && let Some(stream_id) = conn.streams().open(quinn_proto::Dir::Bi)
+            {
+                let mut send = conn.send_stream(stream_id);
+                let _ = send.write(&shaped.payload);
+                let _ = send.finish();
+                drain_server_transmits(Some(udp_fd), conn);
+            }
+            decoy_gen.on_packet_sent();
         }
 
         if cert_rotator.should_rotate(runtime.timer_wheel.now_ms()) {
@@ -910,6 +968,21 @@ fn sockaddr_to_socketaddr(storage: &libc::sockaddr_storage) -> std::net::SocketA
         }
     }
 }
+
+#[cfg(unix)]
+fn drain_server_transmits(fd_val: Option<i32>, conn: &mut quinn_proto::Connection) {
+    let mut buf = Vec::with_capacity(1500);
+    while let Some(transmit) = conn.poll_transmit(std::time::Instant::now(), 1, &mut buf) {
+        if let Some(fd) = fd_val {
+            send_udp_to(fd, &buf[..transmit.size], transmit.destination);
+        }
+        let _ = transmit;
+        buf.clear();
+    }
+}
+
+#[cfg(not(unix))]
+fn drain_server_transmits(_fd_val: Option<i32>, _conn: &mut quinn_proto::Connection) {}
 
 fn run_gen_key() -> Result<(), String> {
     use crate::crypto::kx::derive_public_key;
