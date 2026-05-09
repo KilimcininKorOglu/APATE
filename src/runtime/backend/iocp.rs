@@ -9,6 +9,7 @@ pub struct IocpBackend {
     iocp_handle: windows_sys::Win32::Foundation::HANDLE,
     #[cfg(target_os = "windows")]
     fd_map: HashMap<u64, i32>,
+    #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
     initialized: bool,
 }
 

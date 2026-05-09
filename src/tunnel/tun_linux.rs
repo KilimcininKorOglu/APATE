@@ -39,12 +39,7 @@ impl TunnelAdapter for LinuxTunAdapter {
             return Err(TunnelError::OpenFailed);
         }
 
-        let fd = unsafe {
-            libc::open(
-                b"/dev/net/tun\0".as_ptr().cast(),
-                libc::O_RDWR | libc::O_NONBLOCK,
-            )
-        };
+        let fd = unsafe { libc::open(c"/dev/net/tun".as_ptr(), libc::O_RDWR | libc::O_NONBLOCK) };
 
         if fd < 0 {
             self.opened = true;

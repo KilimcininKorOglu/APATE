@@ -9,6 +9,7 @@ pub struct KqueueBackend {
     kq: i32,
     #[cfg(any(target_os = "macos", target_os = "freebsd"))]
     fd_map: HashMap<u64, i32>,
+    #[cfg_attr(not(any(target_os = "macos", target_os = "freebsd")), allow(dead_code))]
     initialized: bool,
 }
 

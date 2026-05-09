@@ -102,6 +102,7 @@ mod ring {
         pub fd_map: HashMap<u64, i32>,
     }
 
+    #[allow(unsafe_op_in_unsafe_fn)]
     impl IoUringState {
         pub unsafe fn setup() -> Result<Self, ()> {
             let mut params: IoUringParams = std::mem::zeroed();
@@ -286,6 +287,7 @@ mod ring {
 pub struct IoUringBackend {
     #[cfg(target_os = "linux")]
     state: Option<ring::IoUringState>,
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
     initialized: bool,
 }
 
