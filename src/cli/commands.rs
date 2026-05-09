@@ -153,10 +153,12 @@ fn run_client(args: &CliArgs) -> Result<(), String> {
 }
 
 fn run_server(args: &CliArgs) -> Result<(), String> {
-    use crate::auth::{ProbeGatePolicy, ProbeGateResult, evaluate_probe_gate};
+    use crate::auth::{AuthCoordinator, AuthInput, ProbeGatePolicy, ProbeGateResult, evaluate_probe_gate};
+    use crate::auth::static_key::StaticKeyBackend;
     use crate::runtime::Runtime;
     use crate::runtime::backend::FdInterest;
     use crate::stealth::facade::FacadeResponder;
+    use crate::util::AuthMethod;
     use std::net::SocketAddr;
 
     let config = load_config(args)?;
@@ -169,6 +171,16 @@ fn run_server(args: &CliArgs) -> Result<(), String> {
         facade_on_auth_failure: config.stealth.facade_on_auth_failure,
     };
     let facade = FacadeResponder::new(String::from("nginx"));
+
+    let mut coordinator = AuthCoordinator::new(config.auth.methods.clone());
+    for method in &config.auth.methods {
+        if *method == AuthMethod::StaticKey {
+            coordinator.register_backend(
+                AuthMethod::StaticKey,
+                Box::new(StaticKeyBackend::new(Vec::new())),
+            );
+        }
+    }
 
     let listen_addr: SocketAddr = config
         .server
@@ -233,10 +245,27 @@ fn run_server(args: &CliArgs) -> Result<(), String> {
                     );
                 }
             } else {
-                let gate_result = evaluate_probe_gate(
-                    Err(crate::auth::AuthError::EmptyPayload),
-                    policy,
-                );
+                let mut read_buf = [0u8; 4096];
+                let bytes_read = {
+                    #[cfg(unix)]
+                    {
+                        unsafe { libc::recv(token as i32, read_buf.as_mut_ptr().cast(), read_buf.len(), 0) }
+                    }
+                    #[cfg(not(unix))]
+                    { 0isize }
+                };
+
+                let auth_result = if bytes_read > 0 {
+                    let input = AuthInput {
+                        method: config.auth.methods.first().copied().unwrap_or(AuthMethod::StaticKey),
+                        payload: read_buf[..bytes_read as usize].to_vec(),
+                    };
+                    coordinator.authenticate(input)
+                } else {
+                    Err(crate::auth::AuthError::EmptyPayload)
+                };
+
+                let gate_result = evaluate_probe_gate(auth_result, policy);
 
                 match gate_result {
                     ProbeGateResult::AllowTunnel(identity) => {
