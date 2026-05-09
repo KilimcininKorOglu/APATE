@@ -19,8 +19,8 @@ impl ClientHelloSpec {
         Self {
             alpn: profile.alpn.clone(),
             session_id,
-            cipher_suites: vec![0x1301, 0x1302, 0x1303],
-            extensions: vec![0x0000, 0x000B, 0x0010],
+            cipher_suites: profile.cipher_suites.clone(),
+            extensions: profile.extensions.clone(),
         }
     }
 

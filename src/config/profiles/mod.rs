@@ -16,6 +16,8 @@ pub struct StealthProfile {
     pub max_packet_size: u16,
     pub min_jitter_ms: u16,
     pub max_jitter_ms: u16,
+    pub cipher_suites: Vec<u16>,
+    pub extensions: Vec<u16>,
 }
 
 impl StealthProfile {
@@ -43,6 +45,16 @@ impl StealthProfile {
         if self.max_jitter_ms < self.min_jitter_ms || self.max_jitter_ms > 500 {
             return Err(ProfileError::InvalidProfile {
                 field: String::from("max_jitter_ms"),
+            });
+        }
+        if self.cipher_suites.is_empty() {
+            return Err(ProfileError::InvalidProfile {
+                field: String::from("cipher_suites"),
+            });
+        }
+        if self.extensions.is_empty() {
+            return Err(ProfileError::InvalidProfile {
+                field: String::from("extensions"),
             });
         }
 
@@ -98,6 +110,8 @@ fn parse_override(name: &str, source: &str) -> Result<StealthProfile, ProfileErr
         max_packet_size: 1280,
         min_jitter_ms: 2,
         max_jitter_ms: 20,
+        cipher_suites: vec![0x1301, 0x1302, 0x1303],
+        extensions: vec![0x0000, 0x000B, 0x0010],
     });
 
     for raw_line in source.lines() {
@@ -149,6 +163,20 @@ fn parse_override(name: &str, source: &str) -> Result<StealthProfile, ProfileErr
                             field: String::from("max_jitter_ms"),
                         })?;
             }
+            "cipher_suites" => {
+                profile.cipher_suites = parse_u16_list(value).map_err(|_| {
+                    ProfileError::InvalidProfile {
+                        field: String::from("cipher_suites"),
+                    }
+                })?;
+            }
+            "extensions" => {
+                profile.extensions = parse_u16_list(value).map_err(|_| {
+                    ProfileError::InvalidProfile {
+                        field: String::from("extensions"),
+                    }
+                })?;
+            }
             _ => {
                 return Err(ProfileError::InvalidOverrideKey {
                     key: String::from(key),
@@ -158,6 +186,20 @@ fn parse_override(name: &str, source: &str) -> Result<StealthProfile, ProfileErr
     }
 
     Ok(profile)
+}
+
+fn parse_u16_list(value: &str) -> Result<Vec<u16>, ()> {
+    value
+        .split(',')
+        .map(|s| {
+            let s = s.trim();
+            if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+                u16::from_str_radix(hex, 16).map_err(|_| ())
+            } else {
+                s.parse::<u16>().map_err(|_| ())
+            }
+        })
+        .collect()
 }
 
 #[cfg(test)]
